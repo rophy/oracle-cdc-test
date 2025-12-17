@@ -77,3 +77,15 @@ debezium:
     encoding: "BIG5"
     columns: "NAME"
     tables: ".*\\.USR1\\.ADAM1"
+
+# Metrics configuration
+metrics:
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: false
+    # Additional labels for ServiceMonitor (e.g., for Prometheus selector)
+    labels: {}
+    # Scrape interval
+    interval: "15s"
+    # Scrape timeout
+    scrapeTimeout: "10s"
