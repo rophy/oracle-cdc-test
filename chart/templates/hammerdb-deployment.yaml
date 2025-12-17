@@ -1,0 +1,50 @@
+{{- if .Values.hammerdb.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-hammerdb
+  labels:
+    app: {{ .Release.Name }}-hammerdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-hammerdb
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-hammerdb
+    spec:
+      initContainers:
+        # Wait for Oracle to be ready
+        - name: wait-for-oracle
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-oracle 1521; do echo waiting for oracle; sleep 5; done']
+      containers:
+        - name: hammerdb
+          image: "{{ .Values.hammerdb.image.repository }}:{{ .Values.hammerdb.image.tag }}"
+          imagePullPolicy: {{ .Values.hammerdb.image.pullPolicy }}
+          command: ["/bin/bash", "-c", "sleep infinity"]
+          resources:
+            {{- toYaml .Values.hammerdb.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          env:
+            - name: ORACLE_HOST
+              value: "{{ .Release.Name }}-oracle"
+            - name: ORACLE_PORT
+              value: "{{ .Values.hammerdb.oracle.port }}"
+            - name: ORACLE_SERVICE
+              value: "{{ .Values.hammerdb.oracle.serviceName }}"
+            # Oracle Instant Client library path
+            - name: LD_LIBRARY_PATH
+              value: "/home/instantclient_21_5"
+            - name: ORACLE_LIBRARY
+              value: "/home/instantclient_21_5/libclntsh.so"
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ .Release.Name }}-hammerdb-scripts
+            defaultMode: 0755
+{{- end }}

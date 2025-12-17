@@ -1,0 +1,183 @@
+{{- if .Values.hammerdb.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-hammerdb-scripts
+  labels:
+    app: {{ .Release.Name }}-hammerdb
+data:
+  # Build TPROC-C schema script
+  buildschema.tcl: |
+    #!/usr/bin/tclsh
+    puts "HAMMERDB TPROC-C SCHEMA BUILD"
+    puts "=============================="
+
+    global complete
+    proc wait_to_complete {} {
+      global complete
+      set complete [vucomplete]
+      if {!$complete} {
+        after 5000 wait_to_complete
+      } else {
+        exit
+      }
+    }
+
+    # Set database to Oracle
+    dbset db ora
+
+    # Connection settings
+    diset connection system_user system
+    diset connection system_password {{ .Values.hammerdb.oracle.systemPassword | quote }}
+    diset connection instance {{ .Release.Name }}-oracle:{{ .Values.hammerdb.oracle.port }}/{{ .Values.hammerdb.oracle.serviceName }}
+
+    # TPROC-C schema settings
+    diset tpcc tpcc_user {{ .Values.hammerdb.tpcc.user }}
+    diset tpcc tpcc_pass {{ .Values.hammerdb.tpcc.password }}
+    diset tpcc tpcc_def_tab {{ .Values.hammerdb.tpcc.tablespace }}
+    diset tpcc count_ware {{ .Values.hammerdb.tpcc.warehouses }}
+    diset tpcc num_vu {{ .Values.hammerdb.tpcc.buildVirtualUsers }}
+
+    puts "Configuration:"
+    print dict
+
+    puts "\nBuilding schema with {{ .Values.hammerdb.tpcc.warehouses }} warehouses..."
+    buildschema
+    wait_to_complete
+
+  # Run TPROC-C workload script
+  runworkload.tcl: |
+    #!/usr/bin/tclsh
+    puts "HAMMERDB TPROC-C WORKLOAD RUN"
+    puts "=============================="
+
+    # Set database to Oracle
+    dbset db ora
+
+    # Connection settings
+    diset connection system_user system
+    diset connection system_password {{ .Values.hammerdb.oracle.systemPassword | quote }}
+    diset connection instance {{ .Release.Name }}-oracle:{{ .Values.hammerdb.oracle.port }}/{{ .Values.hammerdb.oracle.serviceName }}
+
+    # TPROC-C user settings
+    diset tpcc tpcc_user {{ .Values.hammerdb.tpcc.user }}
+    diset tpcc tpcc_pass {{ .Values.hammerdb.tpcc.password }}
+
+    # Driver settings
+    diset tpcc ora_driver timed
+    diset tpcc rampup {{ .Values.hammerdb.tpcc.rampupMinutes }}
+    diset tpcc duration {{ .Values.hammerdb.tpcc.durationMinutes }}
+    {{- if .Values.hammerdb.tpcc.allWarehouses }}
+    diset tpcc allwarehouse true
+    {{- else }}
+    diset tpcc allwarehouse false
+    {{- end }}
+
+    # Log to temp for output capture
+    vuset logtotemp 1
+
+    puts "Configuration:"
+    print dict
+
+    # Load the TPROC-C driver script
+    loadscript
+
+    puts "\nStarting workload with {{ .Values.hammerdb.tpcc.runVirtualUsers }} virtual users..."
+    puts "Rampup: {{ .Values.hammerdb.tpcc.rampupMinutes }} minutes"
+    puts "Duration: {{ .Values.hammerdb.tpcc.durationMinutes }} minutes"
+
+    # Set virtual users and run
+    vuset vu {{ .Values.hammerdb.tpcc.runVirtualUsers }}
+    vucreate
+    vurun
+
+    # Wait for test duration plus rampup plus buffer
+    set total_seconds [expr { ({{ .Values.hammerdb.tpcc.rampupMinutes }} + {{ .Values.hammerdb.tpcc.durationMinutes }} + 2) * 60 }]
+    puts "Waiting ${total_seconds} seconds for test completion..."
+    runtimer $total_seconds
+
+    vudestroy
+    after 5000
+
+    puts "\nTEST COMPLETE"
+    puts "Check /tmp/hammerdb.log for detailed results"
+
+  # Delete TPROC-C schema script
+  deleteschema.tcl: |
+    #!/usr/bin/tclsh
+    puts "HAMMERDB TPROC-C SCHEMA DELETE"
+    puts "==============================="
+
+    global complete
+    proc wait_to_complete {} {
+      global complete
+      set complete [vucomplete]
+      if {!$complete} {
+        after 5000 wait_to_complete
+      } else {
+        exit
+      }
+    }
+
+    # Set database to Oracle
+    dbset db ora
+
+    # Connection settings
+    diset connection system_user system
+    diset connection system_password {{ .Values.hammerdb.oracle.systemPassword | quote }}
+    diset connection instance {{ .Release.Name }}-oracle:{{ .Values.hammerdb.oracle.port }}/{{ .Values.hammerdb.oracle.serviceName }}
+
+    # TPROC-C user to delete
+    diset tpcc tpcc_user {{ .Values.hammerdb.tpcc.user }}
+
+    puts "Deleting TPROC-C schema for user {{ .Values.hammerdb.tpcc.user }}..."
+    deleteschema
+    wait_to_complete
+
+  # Entrypoint script
+  entrypoint.sh: |
+    #!/bin/bash
+    set -e
+
+    # Find HammerDB installation directory
+    HAMMERDB_DIR=$(find /home -maxdepth 1 -type d -name "HammerDB-*" | head -1)
+    if [ -z "$HAMMERDB_DIR" ]; then
+      echo "ERROR: HammerDB directory not found"
+      exit 1
+    fi
+    cd "$HAMMERDB_DIR"
+
+    echo "HammerDB Performance Test Client"
+    echo "================================="
+    echo ""
+    echo "Available commands:"
+    echo "  build    - Build TPROC-C schema"
+    echo "  run      - Run TPROC-C workload"
+    echo "  delete   - Delete TPROC-C schema"
+    echo "  shell    - Interactive hammerdbcli shell"
+    echo ""
+
+    case "${1:-shell}" in
+      build)
+        echo "Building TPROC-C schema..."
+        ./hammerdbcli auto /scripts/buildschema.tcl
+        ;;
+      run)
+        echo "Running TPROC-C workload..."
+        ./hammerdbcli auto /scripts/runworkload.tcl
+        ;;
+      delete)
+        echo "Deleting TPROC-C schema..."
+        ./hammerdbcli auto /scripts/deleteschema.tcl
+        ;;
+      shell)
+        echo "Starting interactive shell..."
+        exec ./hammerdbcli
+        ;;
+      *)
+        echo "Unknown command: $1"
+        echo "Usage: $0 {build|run|delete|shell}"
+        exit 1
+        ;;
+    esac
+{{- end }}

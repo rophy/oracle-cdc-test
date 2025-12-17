@@ -78,6 +78,44 @@ debezium:
     columns: "NAME"
     tables: ".*\\.USR1\\.ADAM1"
 
+# HammerDB performance testing configuration
+hammerdb:
+  enabled: false
+  image:
+    repository: tpcorg/hammerdb
+    tag: "v4.10"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2"
+  # Oracle connection settings (instance is set in template using release name)
+  oracle:
+    systemPassword: "OraclePwd123"
+    port: 1521
+    serviceName: "FREEPDB1"
+  # TPROC-C benchmark settings
+  tpcc:
+    # User to own the benchmark schema (will be created)
+    user: "TPCC"
+    password: "TPCCPWD"
+    # Tablespace for TPCC data (must exist)
+    tablespace: "TBLS1"
+    # Number of warehouses (scale factor)
+    warehouses: 10
+    # Virtual users for schema build (parallel threads)
+    buildVirtualUsers: 4
+    # Virtual users for workload run
+    runVirtualUsers: 4
+    # Use all warehouses during test
+    allWarehouses: false
+    # Timed test settings
+    rampupMinutes: 2
+    durationMinutes: 5
+
 # Metrics configuration
 metrics:
   # ServiceMonitor for Prometheus Operator

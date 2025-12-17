@@ -28,3 +28,24 @@ To insert test data:
 
 Note: Oracle takes several minutes to initialize on first start.
 Wait for "DATABASE IS READY TO USE!" in the Oracle logs before testing.
+{{- if .Values.hammerdb.enabled }}
+
+HammerDB Performance Testing:
+- HammerDB: {{ .Release.Name }}-hammerdb
+
+To build TPROC-C schema ({{ .Values.hammerdb.tpcc.warehouses }} warehouses):
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
+    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/buildschema.tcl"
+
+To run TPROC-C workload ({{ .Values.hammerdb.tpcc.runVirtualUsers }} virtual users, {{ .Values.hammerdb.tpcc.durationMinutes }} min):
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
+    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/runworkload.tcl"
+
+To delete TPROC-C schema:
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
+    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/deleteschema.tcl"
+
+To run interactive HammerDB CLI:
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
+    "cd /home/HammerDB-* && ./hammerdbcli"
+{{- end }}
