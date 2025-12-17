@@ -1,0 +1,30 @@
+Debezium Oracle CDC has been deployed!
+
+Components:
+- Oracle Database: {{ .Release.Name }}-oracle
+- File Writer: {{ .Release.Name }}-file-writer
+- Debezium Server: {{ .Release.Name }}-debezium
+
+To check the status of all pods:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+To view Oracle logs:
+  kubectl logs -f deployment/{{ .Release.Name }}-oracle
+
+To view Debezium logs:
+  kubectl logs -f deployment/{{ .Release.Name }}-debezium
+
+To view captured CDC events:
+  kubectl exec -it deployment/{{ .Release.Name }}-file-writer -- cat /app/output/events.json
+
+To connect to Oracle:
+  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- sqlplus sys/{{ .Values.oracle.password }}@{{ .Values.debezium.oracle.pdbName }} as sysdba
+
+To insert test data:
+  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- sqlplus USR1/USR1PWD@{{ .Values.debezium.oracle.pdbName }} <<EOF
+  INSERT INTO ADAM1 VALUES (2, 'Test Row', 200, SYSTIMESTAMP);
+  COMMIT;
+  EOF
+
+Note: Oracle takes several minutes to initialize on first start.
+Wait for "DATABASE IS READY TO USE!" in the Oracle logs before testing.

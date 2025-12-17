@@ -1,0 +1,79 @@
+# Oracle Database configuration
+oracle:
+  image:
+    repository: container-registry.oracle.com/database/free
+    tag: "23.5.0.0-lite"
+    pullPolicy: IfNotPresent
+  password: OraclePwd123
+  characterSet: US7ASCII
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "2"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+  persistence:
+    enabled: true
+    oradata:
+      size: 30Gi
+      storageClass: "ebs-gp3"
+    fra:
+      size: 200Gi
+      storageClass: "ebs-gp3"
+
+# File Writer configuration
+fileWriter:
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  port: 8080
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: "ebs-gp3"
+
+# Debezium Server configuration
+debezium:
+  image:
+    repository: quay.io/debezium/server
+    tag: "2.7"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: "ebs-gp3"
+  # Oracle connection settings
+  oracle:
+    hostname: "oracle"
+    port: 1521
+    user: "c##dbzuser"
+    password: "dbzpwd"
+    dbname: "FREE"
+    pdbName: "FREEPDB1"
+  # CDC settings
+  topicPrefix: "oracle"
+  schemaIncludeList: "USR1"
+  tableIncludeList: "USR1.ADAM.*"
+  snapshotMode: "initial"
+  # SMT settings (requires custom JAR, disabled by default)
+  smt:
+    enabled: false
+    encoding: "BIG5"
+    columns: "NAME"
+    tables: ".*\\.USR1\\.ADAM1"

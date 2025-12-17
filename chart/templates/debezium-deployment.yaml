@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-debezium
+  labels:
+    app: {{ .Release.Name }}-debezium
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-debezium
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-debezium
+    spec:
+      initContainers:
+        # Fix permissions on EBS volume (Debezium runs as UID 185)
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ['sh', '-c', 'chown -R 185:185 /debezium/data && chmod 755 /debezium/data']
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /debezium/data
+        # Wait for Oracle to be ready
+        - name: wait-for-oracle
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-oracle 1521; do echo waiting for oracle; sleep 5; done']
+        # Wait for file-writer to be ready
+        - name: wait-for-file-writer
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-file-writer {{ .Values.fileWriter.port }}; do echo waiting for file-writer; sleep 2; done']
+      containers:
+        - name: debezium
+          image: "{{ .Values.debezium.image.repository }}:{{ .Values.debezium.image.tag }}"
+          imagePullPolicy: {{ .Values.debezium.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.debezium.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /debezium/conf
+            - name: data
+              mountPath: /debezium/data
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-debezium-config
+        - name: data
+          {{- if .Values.debezium.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-debezium-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

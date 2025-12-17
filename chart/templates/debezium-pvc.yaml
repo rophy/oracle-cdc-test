@@ -1,0 +1,17 @@
+{{- if .Values.debezium.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-debezium-data
+  labels:
+    app: {{ .Release.Name }}-debezium
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.debezium.persistence.size }}
+  {{- if .Values.debezium.persistence.storageClass }}
+  storageClassName: {{ .Values.debezium.persistence.storageClass }}
+  {{- end }}
+{{- end }}

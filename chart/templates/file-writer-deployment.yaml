@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-file-writer
+  labels:
+    app: {{ .Release.Name }}-file-writer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-file-writer
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-file-writer
+    spec:
+      containers:
+        - name: file-writer
+          image: "{{ .Values.fileWriter.image.repository }}:{{ .Values.fileWriter.image.tag }}"
+          imagePullPolicy: {{ .Values.fileWriter.image.pullPolicy }}
+          workingDir: /app
+          command: ["python", "file-writer.py"]
+          ports:
+            - containerPort: {{ .Values.fileWriter.port }}
+              name: http
+          resources:
+            {{- toYaml .Values.fileWriter.resources | nindent 12 }}
+          volumeMounts:
+            - name: script
+              mountPath: /app/file-writer.py
+              subPath: file-writer.py
+            - name: output
+              mountPath: /app/output
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.fileWriter.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.fileWriter.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: script
+          configMap:
+            name: {{ .Release.Name }}-file-writer-script
+        - name: output
+          {{- if .Values.fileWriter.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-file-writer-output
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

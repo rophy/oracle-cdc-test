@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-oracle
+  labels:
+    app: {{ .Release.Name }}-oracle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-oracle
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-oracle
+    spec:
+      initContainers:
+        # Fix permissions on EBS volumes for oracle user (UID 54321)
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ['sh', '-c', 'chown -R 54321:54321 /opt/oracle/oradata /opt/oracle/fra']
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: oradata
+              mountPath: /opt/oracle/oradata
+            - name: fra
+              mountPath: /opt/oracle/fra
+      containers:
+        - name: oracle
+          image: "{{ .Values.oracle.image.repository }}:{{ .Values.oracle.image.tag }}"
+          imagePullPolicy: {{ .Values.oracle.image.pullPolicy }}
+          ports:
+            - containerPort: 1521
+              name: oracle
+          env:
+            - name: ORACLE_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-oracle-secret
+                  key: oracle-password
+            - name: ORACLE_CHARACTERSET
+              value: {{ .Values.oracle.characterSet | quote }}
+          resources:
+            {{- toYaml .Values.oracle.resources | nindent 12 }}
+          volumeMounts:
+            - name: oradata
+              mountPath: /opt/oracle/oradata
+            - name: fra
+              mountPath: /opt/oracle/fra
+            - name: setup-scripts
+              mountPath: /opt/oracle/scripts/setup
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - echo "SELECT 1 FROM DUAL;" | sqlplus -s / as sysdba | grep -q 1
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+      volumes:
+        - name: oradata
+          {{- if .Values.oracle.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-oracle-oradata
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fra
+          {{- if .Values.oracle.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-oracle-fra
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: setup-scripts
+          configMap:
+            name: {{ .Release.Name }}-oracle-setup

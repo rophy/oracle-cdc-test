@@ -1,0 +1,6 @@
+apiVersion: v2
+name: debezium-oracle
+description: Debezium CDC with Oracle Database and File Writer
+type: application
+version: 0.1.0
+appVersion: "2.7"

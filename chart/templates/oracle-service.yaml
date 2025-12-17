@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-oracle
+  labels:
+    app: {{ .Release.Name }}-oracle
+spec:
+  type: ClusterIP
+  ports:
+    - port: 1521
+      targetPort: 1521
+      name: oracle
+  selector:
+    app: {{ .Release.Name }}-oracle

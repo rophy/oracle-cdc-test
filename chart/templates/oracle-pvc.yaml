@@ -1,0 +1,33 @@
+{{- if .Values.oracle.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-oracle-oradata
+  labels:
+    app: {{ .Release.Name }}-oracle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.oracle.persistence.oradata.size }}
+  {{- if .Values.oracle.persistence.oradata.storageClass }}
+  storageClassName: {{ .Values.oracle.persistence.oradata.storageClass }}
+  {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-oracle-fra
+  labels:
+    app: {{ .Release.Name }}-oracle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.oracle.persistence.fra.size }}
+  {{- if .Values.oracle.persistence.fra.storageClass }}
+  storageClassName: {{ .Values.oracle.persistence.fra.storageClass }}
+  {{- end }}
+{{- end }}

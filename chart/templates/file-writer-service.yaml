@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-file-writer
+  labels:
+    app: {{ .Release.Name }}-file-writer
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.fileWriter.port }}
+      targetPort: {{ .Values.fileWriter.port }}
+      name: http
+  selector:
+    app: {{ .Release.Name }}-file-writer
