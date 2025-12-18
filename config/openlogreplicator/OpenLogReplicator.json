@@ -13,10 +13,16 @@
       },
       "format": {
         "type": "json",
-        "char": 3,
-        "scn": 1,
-        "unknown": 1,
-        "flush-buffer": 1048576
+        "column": 2,
+        "db": 3,
+        "interval-dts": 9,
+        "interval-ytm": 4,
+        "message": 2,
+        "rid": 1,
+        "schema": 7,
+        "scn": 0,
+        "scn-type": 1,
+        "timestamp-all": 1
       },
       "filter": {
         "table": [

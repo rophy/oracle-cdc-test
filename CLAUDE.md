@@ -88,6 +88,37 @@ Output: `/output/events.json` (JSON format with before/after values)
 docker compose exec oracle chmod -R o+r /opt/oracle/fra/FREE/archivelog
 ```
 
+## Debezium with OpenLogReplicator Adapter
+
+The `dbz` service uses Debezium with the OLR adapter instead of LogMiner.
+
+Config: `config/debezium/application-olr.properties`
+
+### OLR Format Configuration Caveat
+
+The [Debezium documentation](https://debezium.io/documentation/reference/stable/connectors/oracle.html#oracle-openlogreplicator-configuration) specifies OLR format as:
+```json
+"format": {
+  "scn-all": 1,
+  ...
+}
+```
+
+However, OLR 1.8.7 does not support `scn-all`. Use these equivalent parameters instead:
+```json
+"format": {
+  "scn": 0,
+  "scn-type": 1,
+  ...
+}
+```
+
+Where:
+- `"scn": 0` - Output SCN as numeric (not hex string), uses field name `scn` (not `scns`)
+- `"scn-type": 1` - Include SCN in all payloads (ALL_PAYLOADS flag)
+
+This achieves the same result as the documented `"scn-all": 1`.
+
 ## Testing CDC
 
 ```bash
