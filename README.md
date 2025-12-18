@@ -115,13 +115,29 @@ docker compose down -v
 
 Tested with HammerDB TPROC-C (10 warehouses, 4 virtual users):
 
-| Metric | Value |
-|--------|-------|
-| Debezium Throughput | **400-500 events/sec** |
-| Peak Throughput | ~500 events/sec |
-| Lag During Load | 10+ minutes |
+| Metric | Default Config | Tuned Config |
+|--------|----------------|--------------|
+| Average Throughput | 400-500 events/sec | **~620 events/sec** |
+| Peak Throughput | ~500 events/sec | **~970 events/sec** |
+| Improvement | - | **+94% peak** |
 
-**Note:** Debezium with LogMiner cannot keep up with high-throughput OLTP workloads. For higher throughput, consider Oracle GoldenGate with XStream adapter.
+### Tuning Parameters Applied
+
+```properties
+# Batch size (larger = fewer round trips)
+log.mining.batch.size.max=500000
+log.mining.batch.size.default=50000
+log.mining.batch.size.min=10000
+
+# Sleep time (lower = faster polling)
+log.mining.sleep.time.max.ms=1000
+log.mining.sleep.time.default.ms=500
+
+# Filter at database level
+log.mining.query.filter.mode=in
+```
+
+**Note:** Even with tuning, Debezium with LogMiner cannot fully keep up with high-throughput OLTP workloads. LogMiner is polling-based with inherent overhead. For higher throughput, Oracle GoldenGate with XStream adapter is recommended (requires license).
 
 ## Ports (Docker Compose)
 
