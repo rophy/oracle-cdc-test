@@ -48,6 +48,8 @@ debezium.source.schema.include.list=USR1,TPCC
 
 ## Docker Compose Commands
 
+**IMPORTANT: ALWAYS use `docker compose` to manage containers. NEVER use `docker` commands directly (e.g., `docker exec`, `docker logs`, `docker rm`). Use `docker compose exec`, `docker compose logs`, etc. instead.**
+
 ```bash
 # Start (Debezium CDC)
 docker compose up -d
@@ -83,20 +85,20 @@ Output: `/output/events.json` (JSON format with before/after values)
 
 **Note**: OLR requires read access to Oracle redo logs. The oracle-init container sets permissions on `/opt/oracle/fra`. For newly created archived logs, you may need to run:
 ```bash
-docker exec oracle chmod -R o+r /opt/oracle/fra/FREE/archivelog
+docker compose exec oracle chmod -R o+r /opt/oracle/fra/FREE/archivelog
 ```
 
 ## Testing CDC
 
 ```bash
 # Insert test row
-docker exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
+docker compose exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
 
 # Check captured events (Debezium)
-docker exec file-writer tail -1 /app/output/events.json | jq
+docker compose exec file-writer tail -1 /app/output/events.json | jq
 
 # Check captured events (OpenLogReplicator)
-docker exec openlogreplicator tail -1 /output/events.json | jq
+docker compose exec openlogreplicator tail -1 /output/events.json | jq
 ```
 
 ## Ports
