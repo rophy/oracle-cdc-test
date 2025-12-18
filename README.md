@@ -146,7 +146,13 @@ ALTER DATABASE ADD LOGFILE GROUP 5 SIZE 1G;
 ALTER DATABASE ADD LOGFILE GROUP 6 SIZE 1G;
 ```
 
-**Note:** Even with tuning, Debezium with LogMiner cannot fully keep up with high-throughput OLTP workloads. LogMiner is polling-based with inherent overhead. For higher throughput, Oracle GoldenGate with XStream adapter is recommended (requires license).
+### Known Tuning Limitations
+
+- **`continuous.mine`** - Desupported in Oracle 23ai (ORA-44609)
+- **Debezium 3.x `logminer_unbuffered`** - Snapshot phase has connection timeout issues with Oracle 23ai Free
+- **LogMiner polling overhead** - Inherent ~500-1000 events/sec ceiling due to polling architecture
+
+**Note:** Even with tuning, Debezium with LogMiner cannot fully keep up with high-throughput OLTP workloads. For higher throughput, Oracle GoldenGate with XStream adapter is recommended (requires license).
 
 ## Ports (Docker Compose)
 
@@ -154,7 +160,7 @@ ALTER DATABASE ADD LOGFILE GROUP 6 SIZE 1G;
 |---------|------|
 | Oracle | 1521 |
 | Debezium | 8080 |
-| File-writer | 8082 |
+| File-writer | 8083 |
 | JMX Exporter | 9404 |
 | Prometheus | 9090 |
 

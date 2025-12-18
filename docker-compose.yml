@@ -46,7 +46,7 @@ services:
     hostname: file-writer
     command: python /app/file-writer.py
     ports:
-      - "8082:8080"
+      - "8083:8080"
     volumes:
       - ./config/file-writer/file-writer.py:/app/file-writer.py:ro
       - file-writer-output:/app/output

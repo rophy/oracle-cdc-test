@@ -78,6 +78,6 @@ docker exec file-writer tail -1 /app/output/events.json | jq
 |---------|------|
 | Oracle | 1521 |
 | Debezium | 8080 |
-| File-writer | 8082 |
+| File-writer | 8083 |
 | JMX exporter | 9404 |
 | Prometheus | 9090 |
