@@ -3,7 +3,7 @@
   "source": [
     {
       "alias": "FREE",
-      "name": "FREE",
+      "name": "ORACLE",
       "reader": {
         "type": "online",
         "con-id": 3,
@@ -28,14 +28,11 @@
   ],
   "target": [
     {
-      "alias": "file-output",
+      "alias": "debezium",
       "source": "FREE",
       "writer": {
-        "type": "file",
-        "output": "/output/events.json",
-        "new-line": 1,
-        "max-file-size": 0,
-        "append": 1
+        "type": "network",
+        "uri": "0.0.0.0:9000"
       }
     }
   ]
