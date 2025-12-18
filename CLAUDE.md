@@ -10,7 +10,8 @@
 | Component | Image | Purpose |
 |-----------|-------|---------|
 | Oracle | `container-registry.oracle.com/database/free:23.5.0.0-lite` | Oracle 23ai Free (CDB: FREE, PDB: FREEPDB1) |
-| Debezium | `quay.io/debezium/server:2.7` | CDC via LogMiner |
+| Debezium | `quay.io/debezium/server:2.7` | CDC via LogMiner (~970 events/sec peak) |
+| OpenLogReplicator | `rophy/openlogreplicator:1.8.7` | CDC via direct redo log parsing (~6800 events/sec) |
 | File-writer | `python:3.11-slim` | HTTP sink for CDC events |
 | HammerDB | `tpcorg/hammerdb:v4.10` | TPROC-C benchmark |
 
@@ -20,6 +21,7 @@
 |------|----------|-------|---------|
 | sys | OraclePwd123 | CDB | SYSDBA |
 | c##dbzuser | dbzpwd | CDB | Debezium connector |
+| c##olruser | olrpwd | CDB+PDB | OpenLogReplicator connector |
 | USR1 | USR1PWD | FREEPDB1 | Test schema owner |
 | TPCC | TPCCPWD | FREEPDB1 | HammerDB schema (created by HammerDB) |
 
@@ -47,11 +49,17 @@ debezium.source.schema.include.list=USR1,TPCC
 ## Docker Compose Commands
 
 ```bash
-# Start
+# Start (Debezium CDC)
 docker compose up -d
+
+# With OpenLogReplicator (alternative CDC, ~7x faster than Debezium)
+docker compose --profile olr up -d
 
 # With HammerDB
 docker compose --profile hammerdb up -d
+
+# Combined: OLR + HammerDB
+docker compose --profile olr --profile hammerdb up -d
 
 # HammerDB operations
 docker compose --profile hammerdb run --rm hammerdb build   # Create TPCC schema
@@ -62,14 +70,33 @@ docker compose --profile hammerdb run --rm hammerdb delete  # Drop TPCC schema
 docker compose down -v && docker compose up -d
 ```
 
+## OpenLogReplicator Configuration
+
+Config: `config/openlogreplicator/OpenLogReplicator.json`
+
+Key settings:
+- `con-id: 3` - FREEPDB1 container ID (required for multitenant)
+- `server: oracle:1521/FREEPDB1` - Connect to PDB for schema discovery
+- Filter for USR1 and TPCC schemas
+
+Output: `/output/events.json` (JSON format with before/after values)
+
+**Note**: OLR requires read access to Oracle redo logs. The oracle-init container sets permissions on `/opt/oracle/fra`. For newly created archived logs, you may need to run:
+```bash
+docker exec oracle chmod -R o+r /opt/oracle/fra/FREE/archivelog
+```
+
 ## Testing CDC
 
 ```bash
 # Insert test row
 docker exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
 
-# Check captured events
+# Check captured events (Debezium)
 docker exec file-writer tail -1 /app/output/events.json | jq
+
+# Check captured events (OpenLogReplicator)
+docker exec openlogreplicator tail -1 /output/events.json | jq
 ```
 
 ## Ports

@@ -1,0 +1,42 @@
+{
+  "version": "1.8.7",
+  "source": [
+    {
+      "alias": "FREE",
+      "name": "FREE",
+      "reader": {
+        "type": "online",
+        "con-id": 3,
+        "user": "c##olruser",
+        "password": "olrpwd",
+        "server": "oracle:1521/FREEPDB1"
+      },
+      "format": {
+        "type": "json",
+        "char": 3,
+        "scn": 1,
+        "unknown": 1,
+        "flush-buffer": 1048576
+      },
+      "filter": {
+        "table": [
+          {"owner": "USR1", "table": ".*"},
+          {"owner": "TPCC", "table": ".*"}
+        ]
+      }
+    }
+  ],
+  "target": [
+    {
+      "alias": "file-output",
+      "source": "FREE",
+      "writer": {
+        "type": "file",
+        "output": "/output/events.json",
+        "new-line": 1,
+        "max-file-size": 0,
+        "append": 1
+      }
+    }
+  ]
+}

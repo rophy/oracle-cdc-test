@@ -3,7 +3,8 @@ services:
   oracle-init:
     image: busybox:1.36
     container_name: oracle-init
-    command: ["sh", "-c", "chown -R 54321:54321 /opt/oracle/oradata /opt/oracle/fra"]
+    # Fix ownership AND make FRA world-readable for OpenLogReplicator
+    command: ["sh", "-c", "chown -R 54321:54321 /opt/oracle/oradata /opt/oracle/fra && chmod -R o+rX /opt/oracle/fra"]
     volumes:
       - oracle-oradata:/opt/oracle/oradata
       - oracle-fra:/opt/oracle/fra
@@ -122,6 +123,44 @@ services:
     networks:
       - cdc-network
 
+  # Init container to fix OLR volume permissions (OLR runs as UID 1000)
+  olr-init:
+    image: busybox:1.36
+    container_name: olr-init
+    profiles:
+      - olr
+    command: ["sh", "-c", "chown -R 1000:1000 /output /checkpoint"]
+    volumes:
+      - olr-output:/output
+      - olr-checkpoint:/checkpoint
+    restart: "no"
+
+  # OpenLogReplicator - reads redo logs directly (faster than LogMiner)
+  openlogreplicator:
+    image: rophy/openlogreplicator:1.8.7
+    container_name: openlogreplicator
+    hostname: openlogreplicator
+    profiles:
+      - olr
+    depends_on:
+      olr-init:
+        condition: service_completed_successfully
+      oracle:
+        condition: service_healthy
+    volumes:
+      # Oracle data files for schema discovery
+      - oracle-oradata:/opt/oracle/oradata:ro
+      # Oracle redo logs (FRA contains online redo logs)
+      - oracle-fra:/opt/oracle/fra:ro
+      # OLR configuration (relative to workdir /opt/OpenLogReplicator)
+      - ./config/openlogreplicator/OpenLogReplicator.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
+      # Output directory
+      - olr-output:/output
+      # Checkpoint directory (relative to workdir /opt/OpenLogReplicator)
+      - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
+    networks:
+      - cdc-network
+
   hammerdb:
     image: tpcorg/hammerdb:v4.10
     container_name: hammerdb
@@ -152,6 +191,8 @@ volumes:
   debezium-data:
   file-writer-output:
   prometheus-data:
+  olr-output:
+  olr-checkpoint:
 
 networks:
   cdc-network:
