@@ -12,3 +12,9 @@ scrape_configs:
       - targets: ['jmx-exporter:9404']
     scrape_interval: 15s
     scrape_timeout: 10s
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
