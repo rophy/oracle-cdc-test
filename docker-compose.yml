@@ -70,7 +70,7 @@ services:
     restart: "no"
 
   debezium:
-    image: quay.io/debezium/server:2.7
+    image: quay.io/debezium/server:3.3.2.Final
     container_name: debezium
     hostname: debezium
     restart: on-failure
@@ -86,7 +86,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config/debezium/application.properties:/debezium/conf/application.properties:ro
+      - ./config/debezium/application.properties:/debezium/config/application.properties:ro
       - debezium-data:/debezium/data
     networks:
       - cdc-network

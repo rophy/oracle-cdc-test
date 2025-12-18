@@ -45,7 +45,7 @@ fileWriter:
 debezium:
   image:
     repository: quay.io/debezium/server
-    tag: "2.7"
+    tag: "3.3.2.Final"
     pullPolicy: IfNotPresent
   resources:
     requests:
