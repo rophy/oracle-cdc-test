@@ -123,6 +123,7 @@ Tested with HammerDB TPROC-C (10 warehouses, 4 virtual users):
 
 ### Tuning Parameters Applied
 
+**Debezium LogMiner settings** (`application.properties`):
 ```properties
 # Batch size (larger = fewer round trips)
 log.mining.batch.size.max=500000
@@ -135,6 +136,14 @@ log.mining.sleep.time.default.ms=500
 
 # Filter at database level
 log.mining.query.filter.mode=in
+```
+
+**Oracle redo log sizing** (`setup.sql.template`):
+```sql
+-- Increase redo logs from 200MB to 1GB (reduces log switch overhead)
+ALTER DATABASE ADD LOGFILE GROUP 4 SIZE 1G;
+ALTER DATABASE ADD LOGFILE GROUP 5 SIZE 1G;
+ALTER DATABASE ADD LOGFILE GROUP 6 SIZE 1G;
 ```
 
 **Note:** Even with tuning, Debezium with LogMiner cannot fully keep up with high-throughput OLTP workloads. LogMiner is polling-based with inherent overhead. For higher throughput, Oracle GoldenGate with XStream adapter is recommended (requires license).
