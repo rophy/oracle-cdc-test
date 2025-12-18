@@ -32,12 +32,108 @@ This project provides a complete testing environment for Oracle CDC, including:
 
 ## Prerequisites
 
+### Docker Compose
+- Docker with Compose plugin
+- At least 4 CPU cores and 8GB RAM available
+- Access to Oracle Container Registry (for Oracle image)
+
+### Kubernetes
 - Kubernetes cluster (1.24+)
 - Helm 3.x
 - Storage class with dynamic provisioning (e.g., `ebs-gp3`)
 - At least 4 CPU cores and 8GB RAM available
 
-## Quick Start
+## Quick Start (Docker Compose)
+
+### Start the Stack
+
+```bash
+# Start all services
+docker compose up -d
+
+# Watch logs until Oracle is ready
+docker compose logs -f oracle
+
+# Check all services are healthy
+docker compose ps
+```
+
+### Verify CDC is Working
+
+```bash
+# Insert test row
+docker exec oracle bash -c "sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 << 'EOF'
+INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP);
+COMMIT;
+EOF"
+
+# Check captured events (wait ~15 seconds for LogMiner)
+docker exec file-writer tail -1 /app/output/events.json | python3 -m json.tool
+```
+
+### Run HammerDB Stress Test
+
+```bash
+# Build TPCC schema (10 warehouses, takes ~3 minutes)
+docker compose --profile hammerdb run --rm hammerdb build
+
+# Run TPROC-C workload (2 min rampup + 5 min test)
+docker compose --profile hammerdb run --rm hammerdb run
+
+# Monitor CDC throughput during test
+docker exec file-writer wc -l /app/output/events.json
+
+# Check Debezium lag
+curl -s "http://localhost:9090/api/v1/query?query=debezium_oracle_streaming_lag_ms" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print('Lag:', d['data']['result'][0]['value'][1], 'ms')"
+
+# Delete TPCC schema (cleanup)
+docker compose --profile hammerdb run --rm hammerdb delete
+```
+
+### View Prometheus Metrics
+
+```bash
+# Debezium metrics
+curl -s http://localhost:9404/metrics | grep debezium_oracle
+
+# Query via Prometheus
+curl -s "http://localhost:9090/api/v1/query?query=debezium_oracle_streaming_total_captured_dml"
+```
+
+### Clean Up
+
+```bash
+# Stop and remove containers (keeps data)
+docker compose down
+
+# Full cleanup including volumes
+docker compose down -v
+```
+
+## Performance Benchmarks
+
+Tested with HammerDB TPROC-C (10 warehouses, 4 virtual users):
+
+| Metric | Value |
+|--------|-------|
+| Debezium Throughput | **400-500 events/sec** |
+| Peak Throughput | ~500 events/sec |
+| Lag During Load | 10+ minutes |
+
+**Note:** Debezium with LogMiner cannot keep up with high-throughput OLTP workloads. For higher throughput, consider Oracle GoldenGate with XStream adapter.
+
+## Ports (Docker Compose)
+
+| Service | Port |
+|---------|------|
+| Oracle | 1521 |
+| Debezium | 8080 |
+| File-writer | 8082 |
+| JMX Exporter | 9404 |
+| Prometheus | 9090 |
+
+## Quick Start (Kubernetes)
 
 ### Install the Chart
 
