@@ -1,0 +1,157 @@
+services:
+  # Init container to fix Oracle volume permissions (Oracle runs as UID 54321)
+  oracle-init:
+    image: busybox:1.36
+    container_name: oracle-init
+    command: ["sh", "-c", "chown -R 54321:54321 /opt/oracle/oradata /opt/oracle/fra"]
+    volumes:
+      - oracle-oradata:/opt/oracle/oradata
+      - oracle-fra:/opt/oracle/fra
+    restart: "no"
+
+  oracle:
+    image: container-registry.oracle.com/database/free:23.5.0.0-lite
+    container_name: oracle
+    hostname: oracle
+    depends_on:
+      oracle-init:
+        condition: service_completed_successfully
+    environment:
+      - ORACLE_PWD=${ORACLE_PWD:-OraclePwd123}
+      - ORACLE_CHARACTERSET=US7ASCII
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-oradata:/opt/oracle/oradata
+      - oracle-fra:/opt/oracle/fra
+      - ./config/oracle/01_setup.sql:/opt/oracle/scripts/setup/01_setup.sql:ro
+    healthcheck:
+      # Check that the c##dbzuser exists (created by setup script)
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus -S c##dbzuser/dbzpwd@//localhost:1521/FREE"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+    networks:
+      - cdc-network
+
+  file-writer:
+    image: python:3.11-slim
+    container_name: file-writer
+    hostname: file-writer
+    command: python /app/file-writer.py
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./config/file-writer/file-writer.py:/app/file-writer.py:ro
+      - file-writer-output:/app/output
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - cdc-network
+
+  # Init container to fix Debezium volume permissions (Debezium runs as UID 185)
+  debezium-init:
+    image: busybox:1.36
+    container_name: debezium-init
+    command: ["sh", "-c", "chown -R 185:185 /debezium/data && chmod 755 /debezium/data"]
+    volumes:
+      - debezium-data:/debezium/data
+    restart: "no"
+
+  debezium:
+    image: quay.io/debezium/server:2.7
+    container_name: debezium
+    hostname: debezium
+    restart: on-failure
+    depends_on:
+      debezium-init:
+        condition: service_completed_successfully
+      oracle:
+        condition: service_healthy
+      file-writer:
+        condition: service_healthy
+    environment:
+      - JAVA_OPTS=-Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.rmi.port=1099 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=127.0.0.1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/debezium/application.properties:/debezium/conf/application.properties:ro
+      - debezium-data:/debezium/data
+    networks:
+      - cdc-network
+
+  jmx-exporter:
+    image: sscaling/jmx-prometheus-exporter:0.12.0
+    container_name: jmx-exporter
+    hostname: jmx-exporter
+    depends_on:
+      - debezium
+    environment:
+      - SERVICE_PORT=9404
+      - CONFIG_YML=/etc/jmx-exporter/config.yaml
+    ports:
+      - "9404:9404"
+    volumes:
+      - ./config/jmx-exporter/config.yaml:/etc/jmx-exporter/config.yaml:ro
+    networks:
+      - cdc-network
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    hostname: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - cdc-network
+
+  hammerdb:
+    image: tpcorg/hammerdb:v4.10
+    container_name: hammerdb
+    hostname: hammerdb
+    profiles:
+      - hammerdb
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      - LD_LIBRARY_PATH=/home/instantclient_21_5
+      - ORACLE_LIBRARY=/home/instantclient_21_5/libclntsh.so
+      - ORACLE_HOST=oracle
+      - ORACLE_PORT=1521
+      - ORACLE_SERVICE=FREEPDB1
+    volumes:
+      - ./config/hammerdb:/scripts:ro
+    stdin_open: true
+    tty: true
+    entrypoint: ["/scripts/entrypoint.sh"]
+    command: ["shell"]
+    networks:
+      - cdc-network
+
+volumes:
+  oracle-oradata:
+  oracle-fra:
+  debezium-data:
+  file-writer-output:
+  prometheus-data:
+
+networks:
+  cdc-network:
+    driver: bridge

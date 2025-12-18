@@ -1,0 +1,69 @@
+hostPort: debezium:1099
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+whitelistObjectNames:
+  - "debezium.oracle:*"
+rules:
+  # Total DML captured
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>TotalCapturedDmlCount'
+    name: debezium_oracle_streaming_total_captured_dml
+    help: Total DML operations captured from redo logs
+    type: COUNTER
+    labels:
+      server: "$1"
+
+  # Total batch processing time
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>TotalBatchProcessingTimeInMilliseconds'
+    name: debezium_oracle_streaming_batch_processing_time_ms
+    help: Total batch processing time in milliseconds
+    type: COUNTER
+    labels:
+      server: "$1"
+
+  # Commit throughput
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>CommitThroughput'
+    name: debezium_oracle_streaming_commit_throughput
+    help: Commit throughput (commits per second)
+    type: GAUGE
+    labels:
+      server: "$1"
+
+  # Current SCN
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>CurrentScn'
+    name: debezium_oracle_streaming_current_scn
+    help: Current system change number
+    type: GAUGE
+    labels:
+      server: "$1"
+
+  # Lag from source
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>LagFromSourceInMilliseconds'
+    name: debezium_oracle_streaming_lag_ms
+    help: Lag from source database in milliseconds
+    type: GAUGE
+    labels:
+      server: "$1"
+
+  # Fetch query count
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>FetchingQueryCount'
+    name: debezium_oracle_streaming_fetch_query_count
+    help: Number of LogMiner fetch queries
+    type: COUNTER
+    labels:
+      server: "$1"
+
+  # Mining session memory
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=streaming, server=(.+)><>MiningSessionProcessGlobalAreaMemoryInBytes'
+    name: debezium_oracle_streaming_mining_memory_bytes
+    help: Mining session PGA memory in bytes
+    type: GAUGE
+    labels:
+      server: "$1"
+
+  # Catch-all for other Debezium Oracle metrics
+  - pattern: 'debezium\.oracle<type=connector-metrics, context=(.+), server=(.+)><>(.+)'
+    name: debezium_oracle_$1_$3
+    help: Debezium Oracle $1 $3
+    type: UNTYPED
+    labels:
+      server: "$2"
