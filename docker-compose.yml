@@ -24,7 +24,8 @@ services:
     volumes:
       - oracle-oradata:/opt/oracle/oradata
       - oracle-fra:/opt/oracle/fra
-      - ./config/oracle/01_setup.sql:/opt/oracle/scripts/setup/01_setup.sql:ro
+      - ./config/oracle/01_startup.sh:/opt/oracle/scripts/startup/01_startup.sh:ro
+      - ./config/oracle/setup.sql.template:/opt/oracle/scripts/startup/setup.ddl:ro
     healthcheck:
       # Check that the c##dbzuser exists (created by setup script)
       test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus -S c##dbzuser/dbzpwd@//localhost:1521/FREE"]
@@ -45,7 +46,7 @@ services:
     hostname: file-writer
     command: python /app/file-writer.py
     ports:
-      - "8081:8080"
+      - "8082:8080"
     volumes:
       - ./config/file-writer/file-writer.py:/app/file-writer.py:ro
       - file-writer-output:/app/output

@@ -25,25 +25,24 @@
 
 ## Oracle Setup Script
 
-`config/oracle/01_setup.sql` runs on first container start:
-- Enables ARCHIVELOG mode (requires SHUTDOWN/STARTUP)
-- Enables supplemental logging
-- Creates `c##dbzuser` with LogMiner privileges
-- Creates `USR1.ADAM1` test table
+Scripts in `config/oracle/`:
+- `01_startup.sh` - Wrapper with idempotency guard (checks `/opt/oracle/oradata/dbinit` marker)
+- `setup.sql.template` - SQL setup (ARCHIVELOG, supplemental logging, users, test table)
 
-**Note**: Script does SHUTDOWN IMMEDIATE which causes race condition. Debezium has `restart: on-failure` to handle this.
+These are mounted to `/opt/oracle/scripts/startup/` which runs on every container start. The shell wrapper ensures setup only runs once.
+
+**Why startup instead of setup?** Oracle's pre-built images with named volumes skip `/opt/oracle/scripts/setup/` because the DB appears "already created". See [oracle/docker-images#2644](https://github.com/oracle/docker-images/issues/2644).
+
+**Note**: The SQL script does SHUTDOWN IMMEDIATE which causes race condition. Debezium has `restart: on-failure` to handle this.
 
 ## Debezium Configuration
 
 Config: `config/debezium/application.properties`
 
-Current capture filter:
+Capture filter includes both test and HammerDB schemas:
 ```properties
-debezium.source.schema.include.list=USR1
-debezium.source.table.include.list=USR1.ADAM.*
+debezium.source.schema.include.list=USR1,TPCC
 ```
-
-To capture TPCC tables from HammerDB, add `TPCC` schema.
 
 ## Docker Compose Commands
 
@@ -79,6 +78,6 @@ docker exec file-writer tail -1 /app/output/events.json | jq
 |---------|------|
 | Oracle | 1521 |
 | Debezium | 8080 |
-| File-writer | 8081 |
+| File-writer | 8082 |
 | JMX exporter | 9404 |
 | Prometheus | 9090 |
