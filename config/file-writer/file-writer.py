@@ -2,13 +2,21 @@
 """Simple HTTP server that writes incoming JSON events to a file."""
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import http.client
 import json
 from datetime import datetime
+
+# Increase max headers limit (default is 100)
+http.client._MAXHEADERS = 1000
 
 OUTPUT_FILE = "/app/output/events.json"
 
 class FileWriterHandler(BaseHTTPRequestHandler):
+    # Disable keep-alive to prevent header accumulation bug
+    protocol_version = "HTTP/1.0"
+
     def do_POST(self):
+
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length)
 
