@@ -141,6 +141,7 @@ services:
       - oracle-fra:/opt/oracle/fra:ro
       - ./config/openlogreplicator/OpenLogReplicator.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
       - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
+      - olr-output:/output
     networks:
       - cdc-network
 
@@ -193,6 +194,7 @@ volumes:
   kafka-consumer-output:
   prometheus-data:
   olr-checkpoint:
+  olr-output:
 
 networks:
   cdc-network:

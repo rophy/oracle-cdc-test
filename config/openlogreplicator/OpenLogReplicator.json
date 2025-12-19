@@ -34,11 +34,11 @@
   ],
   "target": [
     {
-      "alias": "debezium",
+      "alias": "file",
       "source": "FREE",
       "writer": {
-        "type": "network",
-        "uri": "0.0.0.0:9000"
+        "type": "file",
+        "output": "/output/events.json"
       }
     }
   ]
