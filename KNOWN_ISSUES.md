@@ -1,60 +1,65 @@
 # Known Issues
 
-## OLR Network Writer Stalls When Streaming to Debezium
+## Debezium Crashes on Unknown Tables (OLR Adapter)
 
 ### Summary
-OpenLogReplicator 1.8.7 stalls after processing 3-4 archived redo log sequences when using the network writer to stream to Debezium. The issue does not occur with file output.
+Debezium Server 3.3.2.Final crashes when receiving CDC events for tables it doesn't know about (not in its schema history). This commonly occurs when new tables are created after Debezium's initial snapshot, such as during HammerDB TPCC schema creation.
 
-### Symptoms
-- OLR processes 3-4 archive log sequences after startup
-- Then stops logging and stops processing new redo entries
-- All threads become idle (waiting on futex)
-- TCP connection to Debezium remains established
-- No errors in logs
-- Restarting OLR resumes processing for another 3-4 sequences, then stalls again
+### Root Cause
+When OLR sends a DML event for a table Debezium hasn't seen before, Debezium attempts to fetch the table's metadata using `getTableMetadataDdl()`. This method fails with:
 
-### Environment
-- OpenLogReplicator: 1.8.7
-- Debezium Server: 3.3.2.Final
-- Oracle Database: 23ai Free (23.5.0.0-lite)
-- Adapter: Debezium OLR adapter (network connection on port 9000)
-
-### Reproduction Steps
-1. Start the CDC stack with OLR network writer configured
-2. Generate significant database activity (e.g., HammerDB TPCC workload)
-3. Observe OLR logs - it will process a few sequences then stop
-4. Check thread state: all threads in `futex_wait_queue`
-5. Restart OLR - it continues for a few more sequences, then stalls again
-
-### Diagnostic Commands
-```bash
-# Check OLR thread states
-for tid in $(docker compose exec olr ls /proc/7/task/); do
-  echo "Thread $tid: $(docker compose exec olr cat /proc/7/task/$tid/wchan 2>/dev/null)"
-done
-
-# Check TCP connection status (connection remains established)
-docker compose exec olr cat /proc/net/tcp
-
-# Check last processed sequence
-docker compose logs olr | grep "processing redo log" | tail -5
+```
+io.debezium.DebeziumException: Cannot execute without committing because auto-commit is enabled
 ```
 
-### Test Results
+The crash occurs in `OpenLogReplicatorStreamingChangeEventSource.potentiallyEmitSchemaChangeForUnknownTable()`.
 
-| Output Mode | Sequences Processed | Events Captured | Result |
-|-------------|---------------------|-----------------|--------|
-| Network (Debezium) | 3-4 per restart | ~120K per restart | **Stalls repeatedly** |
-| File | All 22 sequences | 4.3M | **Works perfectly** |
+### Symptoms
+1. **Debezium logs show**:
+   ```
+   ERROR Failed: Cannot execute without committing because auto-commit is enabled
+   ERROR Producer failure
+   ERROR Connector completed: success = 'false'
+   ```
+
+2. **OLR logs show**:
+   ```
+   WARN 10061 network error, errno: 32, message: Broken pipe
+   ```
+
+3. **Cycle repeats**: Debezium restarts (due to `restart: on-failure`), reconnects to OLR, receives the same event, crashes again.
+
+### Environment
+- Debezium Server: 3.3.2.Final
+- OpenLogReplicator: 1.8.7
+- Oracle Database: 23ai Free (23.5.0.0-lite)
+- Adapter: Debezium OLR adapter
+
+### Reproduction Steps
+1. Start the CDC stack with Debezium and OLR
+2. Wait for Debezium to complete initial snapshot and start streaming
+3. Create new tables in a schema that OLR is configured to capture (e.g., run HammerDB build)
+4. Observe Debezium crash loop and OLR "Broken pipe" errors
+
+### What We Tried (Did Not Help)
+Adding these Debezium configuration options did NOT prevent the crash:
+```properties
+debezium.source.include.schema.changes=false
+debezium.source.schema.history.internal.store.only.captured.tables.ddl=true
+```
 
 ### Workarounds
 
-#### Option 1: Periodic Restarts (Not Recommended)
-Script automated restarts of OLR until all archived logs are processed. This is unreliable and loses real-time CDC capability.
+#### Option 1: Stop Debezium During Schema Changes
+Stop Debezium before creating new tables, then restart after:
+```bash
+docker compose stop dbz
+# Create tables (e.g., HammerDB build)
+docker compose start dbz
+```
 
-#### Option 2: File Output Mode
+#### Option 2: Use OLR File Output
 Configure OLR to write to a file instead of streaming to Debezium:
-
 ```json
 {
   "target": [
@@ -70,39 +75,25 @@ Configure OLR to write to a file instead of streaming to Debezium:
 }
 ```
 
-Then use a separate process to read the file and publish to Kafka.
+With file output, OLR processes all events without issues (tested: 4.3M events across 22 archive log sequences). A separate process can then read the file and publish to Kafka.
 
-### Root Cause Analysis
-The issue is isolated to OLR's network writer component:
-- Core redo log parsing works correctly (proven by file output test)
-- Schema discovery and metadata updates work correctly
-- The stall occurs during network streaming, likely due to:
-  - Backpressure handling issue with Debezium client
-  - TCP socket write blocking without timeout
-  - Thread synchronization issue in the network writer
+### Misdiagnosis Note
+This issue was initially misdiagnosed as "OLR network writer stalling." The actual sequence of events:
 
-### Related Configuration
-OLR network writer config that exhibits the issue:
-```json
-{
-  "target": [
-    {
-      "alias": "debezium",
-      "source": "FREE",
-      "writer": {
-        "type": "network",
-        "uri": "0.0.0.0:9000"
-      }
-    }
-  ]
-}
-```
+1. OLR sends event for unknown table to Debezium
+2. Debezium crashes trying to fetch metadata
+3. TCP connection breaks, OLR logs "Broken pipe"
+4. OLR waits for new client connection (appears to "stall")
+5. Debezium restarts and reconnects
+6. Same event causes another crash
+
+The "stalling" was actually OLR waiting for a client after Debezium crashed. OLR itself works correctly - the issue is entirely on the Debezium side.
 
 ### Status
-- **Confirmed**: Issue is reproducible
-- **Isolated**: Confirmed to be in network writer (file output works)
-- **Unresolved**: No fix available, workaround is to use file output
+- **Root Cause**: Debezium OLR adapter bug when handling unknown tables
+- **Workaround**: Stop Debezium during schema changes, or use OLR file output
+- **Fix**: Requires Debezium code change to handle unknown tables gracefully
 
 ### References
-- OLR GitHub: https://github.com/bersler/OpenLogReplicator
 - Debezium OLR Adapter: https://debezium.io/documentation/reference/stable/connectors/oracle.html#oracle-openlogreplicator
+- OLR GitHub: https://github.com/bersler/OpenLogReplicator
