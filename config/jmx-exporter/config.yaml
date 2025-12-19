@@ -1,4 +1,4 @@
-hostPort: debezium:1099
+hostPort: dbz:1099
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
 whitelistObjectNames:

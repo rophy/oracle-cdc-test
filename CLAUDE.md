@@ -9,12 +9,14 @@
 
 | Component | Image | Purpose |
 |-----------|-------|---------|
-| Oracle | `container-registry.oracle.com/database/free:23.5.0.0-lite` | Oracle 23ai Free (CDB: FREE, PDB: FREEPDB1) |
-| Debezium | `quay.io/debezium/server:3.3.2.Final` | CDC via OLR adapter → Kafka |
+| Oracle | `gvenzl/oracle-free:23.9-slim-faststart` | Oracle 23ai Free (CDB: FREE, PDB: FREEPDB1) |
+| Debezium | `debezium-server:patched` | CDC via OLR adapter → Kafka (patched for auto-commit fix) |
 | OpenLogReplicator | `rophy/openlogreplicator:1.8.7` | CDC via direct redo log parsing |
 | Kafka | `apache/kafka:3.9.0` | Message broker for CDC events |
 | kafka-consumer | `python:3.11-slim` | Consumes Kafka events, writes to file |
 | HammerDB | `tpcorg/hammerdb:v4.10` | TPROC-C benchmark |
+
+**Note on Oracle image**: We use gvenzl instead of Oracle's official lite image because the lite image has broken `DBMS_METADATA` package (see `KNOWN_ISSUES.md`). The gvenzl slim-faststart variant properly handles XDB dependencies.
 
 ## Database Credentials
 
@@ -32,9 +34,9 @@ Scripts in `config/oracle/`:
 - `01_startup.sh` - Wrapper with idempotency guard (checks `/opt/oracle/oradata/dbinit` marker)
 - `setup.sql.template` - SQL setup (ARCHIVELOG, supplemental logging, users, test table)
 
-These are mounted to `/opt/oracle/scripts/startup/` which runs on every container start. The shell wrapper ensures setup only runs once.
+These are mounted to `/container-entrypoint-startdb.d/` (gvenzl image) which runs on every container start. The shell wrapper ensures setup only runs once.
 
-**Why startup instead of setup?** Oracle's pre-built images with named volumes skip `/opt/oracle/scripts/setup/` because the DB appears "already created". See [oracle/docker-images#2644](https://github.com/oracle/docker-images/issues/2644).
+**Archive log configuration**: Archive logs are stored in `/opt/oracle/oradata/FREE/archivelog` (via `LOG_ARCHIVE_DEST_1`). This keeps both online redo logs and archived logs in the same shared volume, accessible to OLR.
 
 **Note**: The SQL script does SHUTDOWN IMMEDIATE which causes race condition. Debezium has `restart: on-failure` to handle this.
 
@@ -87,10 +89,7 @@ Key settings:
 
 Output: `/output/events.json` (JSON format with before/after values)
 
-**Note**: OLR requires read access to Oracle redo logs. The oracle-init container sets permissions on `/opt/oracle/fra`. For newly created archived logs, you may need to run:
-```bash
-docker compose exec oracle chmod -R o+r /opt/oracle/fra/FREE/archivelog
-```
+**Note**: OLR requires read access to Oracle redo logs. The `oracle-init` container sets permissions on `/opt/oracle/oradata`. OLR uses `reader.type: "online"` which queries Oracle's `V$LOG` and `V$ARCHIVED_LOG` views to dynamically discover log file locations.
 
 ## Debezium with OpenLogReplicator Adapter
 
@@ -198,11 +197,21 @@ docker compose exec -T oracle sqlplus -S / as sysdba < config/oracle/enable-tpcc
 ### Step 6: Restart OLR and Debezium to Pick Up TPCC Tables
 
 ```bash
-docker compose restart olr dbz
-sleep 30
+# Record timestamp before restart
+RESTART_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
 
-# Verify streaming resumed
-docker compose logs dbz --tail=5 2>&1 | grep "Starting streaming"
+docker compose restart olr dbz
+
+# Wait for Debezium to complete snapshot and start streaming
+# This may take several minutes as it snapshots all TPCC tables (~4M records)
+echo "Waiting for Debezium snapshot to complete (this may take 5-10 minutes)..."
+until docker compose logs dbz --since="$RESTART_TIME" 2>&1 | grep -q "Starting streaming"; do
+  echo "Still snapshotting... ($(date +%H:%M:%S))"
+  sleep 30
+done
+echo "Debezium is now streaming"
+
+# Verify OLR is processing
 docker compose logs olr --tail=5 2>&1 | grep -E "processing redo|ERROR"
 ```
 

@@ -11,7 +11,7 @@ if [ -f "${DB_INITIALISED}" ]; then
 fi
 
 echo "Running first-time database setup..."
-sqlplus -S / as sysdba @/opt/oracle/scripts/startup/setup.ddl
+sqlplus -S / as sysdba @/container-entrypoint-startdb.d/setup.ddl
 
 if [ $? -eq 0 ]; then
     touch "${DB_INITIALISED}"
