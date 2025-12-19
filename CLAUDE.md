@@ -143,6 +143,8 @@ docker compose exec olr tail -1 /output/events.json | jq
 
 To accurately measure Debezium CDC throughput, follow these steps in order. The key is to complete Debezium's initial snapshot **before** running the HammerDB workload.
 
+**IMPORTANT**: When running HammerDB commands (build/run), execute them in background and continuously monitor container logs. Debezium may crash when encountering unknown tables - see `KNOWN_ISSUES.md` for details.
+
 ### Step 1: Start Base Stack (without HammerDB)
 
 ```bash
@@ -172,8 +174,19 @@ echo "Debezium is streaming"
 
 ### Step 4: Build TPCC Schema
 
+**Note**: Stop Debezium first to avoid crashes on unknown tables, or run build in background and monitor.
+
 ```bash
+# Option A: Stop Debezium during build (recommended)
+docker compose stop dbz
 docker compose --profile hammerdb run --rm hammerdb build
+docker compose start dbz
+
+# Option B: Run in background and monitor (Debezium will crash-loop)
+docker compose --profile hammerdb run --rm hammerdb build &
+# Monitor in parallel:
+docker compose logs -f dbz olr  # Watch for errors
+docker compose ps               # Check container status
 ```
 
 ### Step 5: Enable Supplemental Logging for TPCC Tables
@@ -195,8 +208,16 @@ docker compose logs olr --tail=5 2>&1 | grep -E "processing redo|ERROR"
 
 ### Step 7: Run HammerDB Workload
 
+Run in background and monitor CDC pipeline:
+
 ```bash
-docker compose --profile hammerdb run --rm hammerdb run
+# Start workload in background
+docker compose --profile hammerdb run --rm hammerdb run &
+
+# Monitor in parallel (run these in separate terminals or check periodically):
+docker compose logs -f dbz olr                              # Watch CDC logs
+docker compose logs kafka-consumer --tail=10 | grep Throughput  # Check throughput
+docker compose ps                                           # Check status
 ```
 
 ### Step 8: Monitor Throughput and Resources
