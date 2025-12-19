@@ -139,6 +139,99 @@ docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server loca
 docker compose exec olr tail -1 /output/events.json | jq
 ```
 
+## HammerDB Stress Test Procedure
+
+To accurately measure Debezium CDC throughput, follow these steps in order. The key is to complete Debezium's initial snapshot **before** running the HammerDB workload.
+
+### Step 1: Start Base Stack (without HammerDB)
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+### Step 2: Wait for Oracle Setup to Complete
+
+```bash
+until docker compose exec oracle ls /opt/oracle/oradata/dbinit 2>/dev/null; do
+  echo "Waiting for Oracle setup..."
+  sleep 10
+done
+echo "Oracle setup complete"
+```
+
+### Step 3: Wait for Debezium to Complete Snapshot and Start Streaming
+
+```bash
+until docker compose logs dbz 2>&1 | grep -q "Starting streaming"; do
+  echo "Waiting for Debezium snapshot..."
+  sleep 10
+done
+echo "Debezium is streaming"
+```
+
+### Step 4: Build TPCC Schema
+
+```bash
+docker compose --profile hammerdb run --rm hammerdb build
+```
+
+### Step 5: Enable Supplemental Logging for TPCC Tables
+
+```bash
+docker compose exec -T oracle sqlplus -S / as sysdba < config/oracle/enable-tpcc-supplemental-logging.sql
+```
+
+### Step 6: Restart OLR and Debezium to Pick Up TPCC Tables
+
+```bash
+docker compose restart olr dbz
+sleep 30
+
+# Verify streaming resumed
+docker compose logs dbz --tail=5 2>&1 | grep "Starting streaming"
+docker compose logs olr --tail=5 2>&1 | grep -E "processing redo|ERROR"
+```
+
+### Step 7: Run HammerDB Workload
+
+```bash
+docker compose --profile hammerdb run --rm hammerdb run
+```
+
+### Step 8: Monitor Throughput and Resources
+
+```bash
+# Kafka consumer throughput (reported every 10 seconds)
+docker compose logs kafka-consumer --tail=10 | grep Throughput
+
+# Total events captured
+docker compose exec kafka-consumer wc -l /app/output/events.json
+
+# Container resource usage
+docker stats --no-stream | grep -E "oracle|dbz|olr|kafka"
+
+# Prometheus metrics (if available)
+curl -s "http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_total"
+```
+
+### Why This Order Matters
+
+| Step | Reason |
+|------|--------|
+| Start without HammerDB | Debezium snapshot requires stable DB connections; heavy load causes timeouts |
+| Wait for streaming | Snapshot must complete before workload, otherwise Debezium retries indefinitely |
+| Restart after TPCC | OLR and Debezium need to discover the new TPCC tables |
+
+### Expected Results (4 VUs, 10 warehouses, 5 min duration)
+
+| Metric | Value |
+|--------|-------|
+| Debezium Throughput | ~6,000 events/sec |
+| Oracle Peak CPU | ~160% (of 200% Free limit) |
+| OLR Memory | ~2 GiB |
+| Debezium Memory | ~630 MiB |
+
 ## Ports
 
 | Service | Port |

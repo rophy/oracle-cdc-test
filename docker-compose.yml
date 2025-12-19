@@ -123,7 +123,7 @@ services:
   # Init container to fix OLR volume permissions (OLR runs as UID 1000)
   olr-init:
     image: busybox:1.36
-    command: ["sh", "-c", "chown -R 1000:1000 /checkpoint"]
+    command: ["sh", "-c", "chown -R 54321:54321 /checkpoint"]
     volumes:
       - olr-checkpoint:/checkpoint
     restart: "no"
@@ -131,6 +131,7 @@ services:
   # OpenLogReplicator - reads redo logs directly for Debezium OLR adapter
   olr:
     image: rophy/openlogreplicator:1.8.7
+    user: 54321:54321
     depends_on:
       olr-init:
         condition: service_completed_successfully

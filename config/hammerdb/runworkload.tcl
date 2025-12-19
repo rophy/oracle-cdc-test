@@ -29,12 +29,12 @@ print dict
 # Load the TPROC-C driver script
 loadscript
 
-puts "\nStarting workload with 4 virtual users..."
+puts "\nStarting workload with 8 virtual users..."
 puts "Rampup: 2 minutes"
 puts "Duration: 5 minutes"
 
 # Set virtual users and run
-vuset vu 4
+vuset vu 8
 vucreate
 vurun
 
