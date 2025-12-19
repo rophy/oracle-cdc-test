@@ -10,9 +10,10 @@
 | Component | Image | Purpose |
 |-----------|-------|---------|
 | Oracle | `container-registry.oracle.com/database/free:23.5.0.0-lite` | Oracle 23ai Free (CDB: FREE, PDB: FREEPDB1) |
-| Debezium | `quay.io/debezium/server:2.7` | CDC via LogMiner (~970 events/sec peak) |
-| OpenLogReplicator | `rophy/openlogreplicator:1.8.7` | CDC via direct redo log parsing (~6800 events/sec) |
-| File-writer | `python:3.11-slim` | HTTP sink for CDC events |
+| Debezium | `quay.io/debezium/server:3.3.2.Final` | CDC via OLR adapter → Kafka |
+| OpenLogReplicator | `rophy/openlogreplicator:1.8.7` | CDC via direct redo log parsing |
+| Kafka | `apache/kafka:3.9.0` | Message broker for CDC events |
+| kafka-consumer | `python:3.11-slim` | Consumes Kafka events, writes to file |
 | HammerDB | `tpcorg/hammerdb:v4.10` | TPROC-C benchmark |
 
 ## Database Credentials
@@ -39,10 +40,13 @@ These are mounted to `/opt/oracle/scripts/startup/` which runs on every containe
 
 ## Debezium Configuration
 
-Config: `config/debezium/application.properties`
+Config: `config/debezium/application-olr.properties`
 
-Capture filter includes both test and HammerDB schemas:
+Uses Kafka sink with OLR adapter:
 ```properties
+debezium.sink.type=kafka
+debezium.sink.kafka.producer.bootstrap.servers=kafka:9092
+debezium.source.database.connection.adapter=olr
 debezium.source.schema.include.list=USR1,TPCC
 ```
 
@@ -125,11 +129,14 @@ This achieves the same result as the documented `"scn-all": 1`.
 # Insert test row
 docker compose exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
 
-# Check captured events (Debezium)
-docker compose exec file-writer tail -1 /app/output/events.json | jq
+# Check captured events (via kafka-consumer)
+docker compose exec kafka-consumer tail -1 /app/output/events.json | jq
 
-# Check captured events (OpenLogReplicator)
-docker compose exec openlogreplicator tail -1 /output/events.json | jq
+# List Kafka topics
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+# Check captured events (OpenLogReplicator direct output)
+docker compose exec olr tail -1 /output/events.json | jq
 ```
 
 ## Ports
@@ -137,7 +144,8 @@ docker compose exec openlogreplicator tail -1 /output/events.json | jq
 | Service | Port |
 |---------|------|
 | Oracle | 1521 |
+| Kafka | 9092 |
 | Debezium | 8080 |
-| File-writer | 8083 |
 | JMX exporter | 9404 |
 | Prometheus | 9090 |
+| cAdvisor | 8080 |

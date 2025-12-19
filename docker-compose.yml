@@ -36,18 +36,43 @@ services:
     networks:
       - cdc-network
 
-  file-writer:
-    image: python:3.11-slim
-    command: python /app/file-writer.py
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
     volumes:
-      - ./config/file-writer/file-writer.py:/app/file-writer.py:ro
-      - file-writer-output:/app/output
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/')\""]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cdc-network
+
+  kafka-consumer:
+    image: python:3.11-slim
+    command: sh -c "pip install kafka-python-ng && python /app/kafka-consumer.py"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_PATTERN=oracle.*
+    volumes:
+      - ./config/kafka-consumer/kafka-consumer.py:/app/kafka-consumer.py:ro
+      - kafka-consumer-output:/app/output
     networks:
       - cdc-network
 
@@ -128,7 +153,7 @@ services:
         condition: service_completed_successfully
       oracle:
         condition: service_healthy
-      file-writer:
+      kafka:
         condition: service_healthy
       olr:
         condition: service_started
@@ -164,7 +189,8 @@ volumes:
   oracle-oradata:
   oracle-fra:
   debezium-data:
-  file-writer-output:
+  kafka-data:
+  kafka-consumer-output:
   prometheus-data:
   olr-checkpoint:
 

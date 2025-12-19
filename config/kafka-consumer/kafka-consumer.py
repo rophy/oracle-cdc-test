@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Kafka consumer that writes CDC events to a file."""
+
+import json
+import os
+import sys
+import time
+from datetime import datetime
+from kafka import KafkaConsumer
+
+# Disable output buffering
+sys.stdout.reconfigure(line_buffering=True)
+
+BOOTSTRAP_SERVERS = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092')
+TOPIC_PATTERN = os.environ.get('KAFKA_TOPIC_PATTERN', 'oracle.*')
+OUTPUT_FILE = os.environ.get('OUTPUT_FILE', '/app/output/events.json')
+GROUP_ID = os.environ.get('KAFKA_GROUP_ID', 'file-writer')
+
+def main():
+    print(f"Connecting to Kafka at {BOOTSTRAP_SERVERS}")
+    print(f"Subscribing to topics matching: {TOPIC_PATTERN}")
+    print(f"Writing events to: {OUTPUT_FILE}")
+
+    # Wait for Kafka to be ready
+    consumer = None
+    while consumer is None:
+        try:
+            consumer = KafkaConsumer(
+                bootstrap_servers=BOOTSTRAP_SERVERS.split(','),
+                group_id=GROUP_ID,
+                auto_offset_reset='earliest',
+                enable_auto_commit=True,
+                value_deserializer=lambda x: x.decode('utf-8', errors='replace'),
+            )
+            consumer.subscribe(pattern=TOPIC_PATTERN)
+            print("Connected to Kafka successfully")
+        except Exception as e:
+            print(f"Failed to connect to Kafka: {e}, retrying in 5s...")
+            time.sleep(5)
+
+    event_count = 0
+    last_report = time.time()
+
+    for message in consumer:
+        try:
+            # Try to parse as JSON for consistent formatting
+            data = json.loads(message.value)
+            line = json.dumps(data)
+        except json.JSONDecodeError:
+            line = message.value
+
+        # Append to file
+        with open(OUTPUT_FILE, 'a') as f:
+            f.write(line + '\n')
+
+        event_count += 1
+
+        # Report throughput every 10 seconds
+        now = time.time()
+        if now - last_report >= 10:
+            rate = event_count / (now - last_report)
+            print(f"[{datetime.now().isoformat()}] Throughput: {rate:.1f} events/sec (topic: {message.topic})")
+            event_count = 0
+            last_report = now
+
+if __name__ == '__main__':
+    main()
