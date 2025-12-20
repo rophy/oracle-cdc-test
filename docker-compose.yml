@@ -97,6 +97,7 @@ services:
       - ORACLE_USER=system
       - ORACLE_PASSWORD=${ORACLE_PASSWORD:-OraclePwd123}
       - ORACLE_INSTANCE=oracle:1521/FREEPDB1
+      - HAMMERDB_VUS=${HAMMERDB_VUS:-}
     volumes:
       - ./config/hammerdb:/scripts
       - ./output/hammerdb:/tmp

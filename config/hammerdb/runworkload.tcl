@@ -23,7 +23,15 @@ diset tpcc checkpoint false
 
 loadscript
 puts "TEST STARTED"
-vuset vu vcpu
+# Use HAMMERDB_VUS env var if set, otherwise auto-detect from CPUs
+if { [info exists ::env(HAMMERDB_VUS)] && $::env(HAMMERDB_VUS) ne "" } {
+    set vu $::env(HAMMERDB_VUS)
+    puts "Using $vu virtual users (from HAMMERDB_VUS)"
+} else {
+    set vu [ numberOfCPUs ]
+    puts "Using $vu virtual users (auto-detected from CPUs)"
+}
+vuset vu $vu
 vucreate
 tcstart
 tcstatus

@@ -159,52 +159,111 @@ reports/performance/YYYYMMDD_HHMM/
 docker compose images | grep -E "oracle|olr|dbz|kafka"
 ```
 
-#### 2. Kafka Consumer Throughput (events/sec)
+#### 2. Querying Prometheus for Time-Series Metrics
+
+Use `curl` from the hammerdb container to query Prometheus. The hammerdb container has curl installed and can reach prometheus via Docker network.
+
+**Setting the Time Range:**
 
 ```bash
-# Extract throughput readings from kafka-consumer logs
-docker compose logs kafka-consumer 2>&1 | grep -E "Throughput:" | \
-  awk '{print $1, $NF}' | sed 's/events\/sec//'
+# Convert your test start/end times to Unix timestamps
+# Example: 2025-12-20 18:38:00 UTC
+date -d "2025-12-20T18:38:00Z" +%s  # Returns: 1766255880
+
+# Set environment variables for the time range
+START_TS=1766255880  # Test start time (unix timestamp)
+END_TS=1766256480    # Test end time (unix timestamp)
 ```
 
-#### 3. Total Events by Topic
+**URL Encoding Reference:**
+
+PromQL queries must be URL-encoded when passed as query parameters:
+
+| Character | URL Encoded |
+|-----------|-------------|
+| `{` | `%7B` |
+| `}` | `%7D` |
+| `[` | `%5B` |
+| `]` | `%5D` |
+| `=` | `%3D` |
+| `"` | `%22` |
+| `~` | `%7E` |
+| `\|` | `%7C` |
+
+#### 3. OLR DML Throughput (events/sec)
 
 ```bash
-# Query Prometheus for final topic offsets
-docker compose exec -T prometheus wget -qO- \
-  'http://localhost:9090/api/v1/query?query=kafka_topic_partition_current_offset' | jq -r '
-  .data.result[] | "\(.metric.topic) \(.value[1])"' | sort
+# PromQL: sum(rate(dml_ops{filter="out"}[30s]))
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(rate(dml_ops%7Bfilter%3D%22out%22%7D%5B30s%5D))&start=${START_TS}&end=${END_TS}&step=30"'
 ```
 
-#### 4. OLR Throughput (events/sec)
+#### 4. Container CPU Usage (%)
 
 ```bash
-# Query Prometheus for OLR processing rate
-docker compose exec -T prometheus wget -qO- \
-  'http://localhost:9090/api/v1/query_range?query=sum(rate(dml_ops{filter="out"}[30s]))&start=START_TIME&end=END_TIME&step=10s' | \
-  jq -r '.data.result[0].values | .[] | "\(.[0]) \(.[1])"'
+# Oracle CPU
+# PromQL: sum(rate(container_cpu_usage_seconds_total{name=~".*oracle.*"}[30s]))*100
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total%7Bname%3D~%22.*oracle.*%22%7D%5B30s%5D))*100&start=${START_TS}&end=${END_TS}&step=30"'
+
+# OLR CPU
+# PromQL: sum(rate(container_cpu_usage_seconds_total{name=~".*olr.*"}[30s]))*100
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total%7Bname%3D~%22.*olr.*%22%7D%5B30s%5D))*100&start=${START_TS}&end=${END_TS}&step=30"'
 ```
 
-#### 5. Debezium → Kafka Throughput (events/sec)
+#### 5. Container Memory Usage (MB)
 
 ```bash
-# Query Prometheus for Kafka offset rate (Debezium output)
-docker compose exec -T prometheus wget -qO- \
-  'http://localhost:9090/api/v1/query_range?query=sum(rate(kafka_topic_partition_current_offset[30s]))&start=START_TIME&end=END_TIME&step=10s' | \
-  jq -r '.data.result[0].values | .[] | "\(.[0]) \(.[1])"'
+# Oracle Memory
+# PromQL: sum(container_memory_usage_bytes{name=~".*oracle.*"})/1024/1024
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(container_memory_usage_bytes%7Bname%3D~%22.*oracle.*%22%7D)/1024/1024&start=${START_TS}&end=${END_TS}&step=30"'
+
+# OLR Memory
+# PromQL: sum(container_memory_usage_bytes{name=~".*olr.*"})/1024/1024
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(container_memory_usage_bytes%7Bname%3D~%22.*olr.*%22%7D)/1024/1024&start=${START_TS}&end=${END_TS}&step=30"'
 ```
 
-#### 6. Container Resource Usage
+#### 6. Current OLR DML Counts (Instant Query)
 
 ```bash
-# Memory (MB)
-docker compose exec -T prometheus wget -qO- \
-  'http://localhost:9090/api/v1/query_range?query=container_memory_usage_bytes{name=~".*oracle.*|.*olr.*|.*dbz.*|.*kafka.*"}/1024/1024&start=START_TIME&end=END_TIME&step=10s' | jq
-
-# CPU (%)
-docker compose exec -T prometheus wget -qO- \
-  'http://localhost:9090/api/v1/query_range?query=rate(container_cpu_usage_seconds_total{name=~".*oracle.*|.*olr.*|.*dbz.*|.*kafka.*"}[30s])*100&start=START_TIME&end=END_TIME&step=10s' | jq
+# Get current totals for all DML operations
+# PromQL: dml_ops{filter="out"}
+docker compose exec hammerdb curl -s 'http://prometheus:9090/api/v1/query?query=dml_ops'
 ```
+
+#### 7. Parsing Prometheus Response
+
+The response format is JSON with values as `[timestamp, value]` pairs:
+
+```bash
+# Extract values with jq
+docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c \
+  'curl -s "http://prometheus:9090/api/v1/query_range?query=sum(rate(dml_ops%7Bfilter%3D%22out%22%7D%5B30s%5D))&start=${START_TS}&end=${END_TS}&step=30"' | \
+  jq -r '.data.result[0].values[] | "\(.[0]): \(.[1]) events/sec"'
+```
+
+#### 8. Available OLR Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `dml_ops{filter="out"}` | DML operations output (by table, type) |
+| `dml_ops{filter="skip"}` | Skipped operations |
+| `memory_used_mb` | OLR memory usage |
+| `bytes_parsed` | Bytes of redo log parsed |
+| `bytes_sent` | Bytes sent to output |
+| `checkpoints` | Checkpoint operations |
+
+#### 9. Available cAdvisor Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `container_cpu_usage_seconds_total` | Cumulative CPU usage |
+| `container_memory_usage_bytes` | Current memory usage |
+| `container_network_receive_bytes_total` | Network bytes received |
+| `container_network_transmit_bytes_total` | Network bytes transmitted |
 
 ### Charts to Include (charts.html)
 
