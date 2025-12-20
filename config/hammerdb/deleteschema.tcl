@@ -1,29 +1,21 @@
-#!/usr/bin/tclsh
-puts "HAMMERDB TPROC-C SCHEMA DELETE"
-puts "==============================="
+#!/bin/tclsh
+# maintainer: Pooja Jain
 
-global complete
-proc wait_to_complete {} {
-  global complete
-  set complete [vucomplete]
-  if {!$complete} {
-    after 5000 wait_to_complete
-  } else {
-    exit
-  }
-}
-
-# Set database to Oracle
 dbset db ora
+dbset bm TPC-C
 
-# Connection settings
-diset connection system_user system
-diset connection system_password "OraclePwd123"
-diset connection instance oracle:1521/FREEPDB1
+puts "SETTING CONFIGURATION"
+dbset db ora
+dbset bm TPC-C
 
-# TPROC-C user to delete
-diset tpcc tpcc_user TPCC
+diset connection system_user $::env(ORACLE_USER)
+diset connection system_password $::env(ORACLE_PASSWORD)
+diset connection instance $::env(ORACLE_INSTANCE)
 
-puts "Deleting TPROC-C schema for user TPCC..."
+diset tpcc tpcc_user tpcc
+diset tpcc tpcc_pass tpcc
+
+
+puts "DROP SCHEMA STARTED"
 deleteschema
-wait_to_complete
+puts "DROP SCHEMA COMPLETED"

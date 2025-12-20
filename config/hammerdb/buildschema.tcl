@@ -1,24 +1,32 @@
-#!/usr/bin/tclsh
-puts "HAMMERDB TPROC-C SCHEMA BUILD"
-puts "=============================="
+#!/bin/tclsh
+# maintainer: Pooja Jain
 
-# Set database to Oracle
+puts "SETTING CONFIGURATION"
 dbset db ora
+dbset bm TPC-C
 
-# Connection settings
-diset connection system_user system
-diset connection system_password "OraclePwd123"
-diset connection instance oracle:1521/FREEPDB1
+diset connection system_user $::env(ORACLE_USER)
+diset connection system_password $::env(ORACLE_PASSWORD)
+diset connection instance $::env(ORACLE_INSTANCE)
 
-# TPROC-C schema settings
-diset tpcc tpcc_user TPCC
-diset tpcc tpcc_pass TPCCPWD
-diset tpcc tpcc_def_tab TBLS1
-diset tpcc count_ware 1
-diset tpcc num_vu 1
+set vu [ numberOfCPUs ]
+set warehouse [ expr {$vu * 5} ]
+diset tpcc count_ware $warehouse
+diset tpcc num_vu $vu
+diset tpcc tpcc_user tpcc
+diset tpcc tpcc_pass tpcc
+diset tpcc tpcc_def_tab users
+diset tpcc tpcc_def_temp temp
+if { $warehouse >= 200 } { 
+diset tpcc partition true 
+diset tpcc hash_clusters true
+diset tpcc tpcc_ol_tab users
+	} else {
+diset tpcc partition false 
+diset tpcc hash_clusters false
+	}
 
-puts "Configuration:"
-print dict
-
-puts "\nBuilding schema with 1 warehouse..."
+puts "SCHEMA BUILD STARTED"
 buildschema
+puts "SCHEMA BUILD COMPLETED"
+

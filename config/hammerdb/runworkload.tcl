@@ -1,43 +1,36 @@
-#!/usr/bin/tclsh
-puts "HAMMERDB TPROC-C WORKLOAD RUN"
-puts "=============================="
+#!/bin/tclsh
+# maintainer: Pooja Jain
 
-# Set database to Oracle
+set tmpdir $::env(TMP)
+puts "SETTING CONFIGURATION"
 dbset db ora
+dbset bm TPC-C
 
-# Connection settings
-diset connection system_user system
-diset connection system_password "OraclePwd123"
-diset connection instance oracle:1521/FREEPDB1
+diset connection system_user $::env(ORACLE_USER)
+diset connection system_password $::env(ORACLE_PASSWORD)
+diset connection instance $::env(ORACLE_INSTANCE)
 
-# TPROC-C user settings
-diset tpcc tpcc_user TPCC
-diset tpcc tpcc_pass TPCCPWD
+diset tpcc tpcc_user tpcc
+diset tpcc tpcc_pass tpcc
 
-# Driver settings - timed test
 diset tpcc ora_driver timed
-diset tpcc total_iterations 1000
-diset tpcc rampup 0
-diset tpcc duration 1
-diset tpcc allwarehouse false
+diset tpcc total_iterations 10000000
+diset tpcc rampup 2
+diset tpcc duration 5
+diset tpcc ora_timeprofile true
+diset tpcc allwarehouse true
+diset tpcc checkpoint false
 
-# Virtual user settings
-vuset logtotemp 1
-vuset unique 1
-
-puts "Configuration:"
-print dict
-
-# Load the TPROC-C driver script
 loadscript
-
-puts "\nStarting workload with 1 virtual user..."
-puts "Rampup: 0 minutes, Duration: 1 minute"
-
-# Set virtual users and run
-vuset vu 1
+puts "TEST STARTED"
+vuset vu vcpu
 vucreate
-set jobid [vurun]
+tcstart
+tcstatus
+set jobid [ vurun ]
 vudestroy
-
-puts "\nTEST COMPLETE - Job ID: $jobid"
+tcstop
+puts "TEST COMPLETE"
+set of [ open $tmpdir/ora_tprocc w ]
+puts $of $jobid
+close $of
