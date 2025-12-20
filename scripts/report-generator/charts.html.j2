@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    <p class="meta">
+        Start: {{ start_time }} | End: {{ end_time }} | Duration: {{ duration_minutes }} min
+    </p>
+
+    {# Summary Table #}
+    {% if metrics_table %}
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in metrics_table %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td style="text-align: right;">{{ row.min }}</td>
+                    <td style="text-align: right;">{{ row.avg }}</td>
+                    <td style="text-align: right;">{{ row.max }}</td>
+                    <td style="text-align: right;">{{ row.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# CPU Chart #}
+    {% if cpu_series %}
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Memory Chart #}
+    {% if memory_series %}
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Network RX Chart #}
+    {% if network_rx_series %}
+    <h2>Network Receive (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netRxChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Network TX Chart #}
+    {% if network_tx_series %}
+    <h2>Network Transmit (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netTxChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Filesystem Read Chart #}
+    {% if fs_read_series %}
+    <h2>Filesystem Read (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsReadChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Filesystem Write Chart #}
+    {% if fs_write_series %}
+    <h2>Filesystem Write (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsWriteChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Rate Charts #}
+    {% for series in rate_series %}
+    <h2>{{ series.name.replace('_', ' ').title() }} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart{{ loop.index }}"></canvas>
+        </div>
+    </div>
+    {% endfor %}
+
+    {# Total Charts #}
+    {% for series in total_series %}
+    <h2>{{ series.name.replace('_', ' ').title() }} (total)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="totalChart{{ loop.index }}"></canvas>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = {{ time_labels | tojson }};
+
+        {% if cpu_series %}
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for cpu_item in cpu_series %}
+                    {
+                        label: '{{ cpu_item.name }} CPU %',
+                        data: {{ cpu_item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% if memory_series %}
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for mem_item in memory_series %}
+                    {
+                        label: '{{ mem_item.name }} Memory (MB)',
+                        data: {{ mem_item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% if network_rx_series %}
+        // Network RX Chart
+        new Chart(document.getElementById('netRxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for item in network_rx_series %}
+                    {
+                        label: '{{ item.name }} RX (B/s)',
+                        data: {{ item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% if network_tx_series %}
+        // Network TX Chart
+        new Chart(document.getElementById('netTxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for item in network_tx_series %}
+                    {
+                        label: '{{ item.name }} TX (B/s)',
+                        data: {{ item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% if fs_read_series %}
+        // Filesystem Read Chart
+        new Chart(document.getElementById('fsReadChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for item in fs_read_series %}
+                    {
+                        label: '{{ item.name }} Read (B/s)',
+                        data: {{ item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% if fs_write_series %}
+        // Filesystem Write Chart
+        new Chart(document.getElementById('fsWriteChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {% for item in fs_write_series %}
+                    {
+                        label: '{{ item.name }} Write (B/s)',
+                        data: {{ item["values"] | tojson }},
+                        borderColor: colors[{{ loop.index0 }} % colors.length].border,
+                        backgroundColor: colors[{{ loop.index0 }} % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endif %}
+
+        {% for rate_item in rate_series %}
+        // Rate Chart {{ loop.index }}
+        new Chart(document.getElementById('rateChart{{ loop.index }}'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: '{{ rate_item.name }} (events/sec)',
+                    data: {{ rate_item["values"] | tojson }},
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endfor %}
+
+        {% for total_item in total_series %}
+        // Total Chart {{ loop.index }}
+        new Chart(document.getElementById('totalChart{{ loop.index }}'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: '{{ total_item.name }}',
+                    data: {{ total_item["values"] | tojson }},
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Total' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        {% endfor %}
+    </script>
+</body>
+</html>

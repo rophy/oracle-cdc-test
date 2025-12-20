@@ -65,8 +65,10 @@ docker compose exec hammerdb /scripts/entrypoint.sh build   # Create TPCC schema
 docker compose exec hammerdb /scripts/entrypoint.sh run     # Run workload
 docker compose exec hammerdb /scripts/entrypoint.sh delete  # Drop TPCC schema
 
-# Clean restart
-docker compose down -v && docker compose up -d
+# Clean restart (includes output file cleanup)
+docker compose down -v
+docker compose --profile=clean run --rm clean
+docker compose up -d
 ```
 
 **HammerDB output**: Logs are saved to `./output/hammerdb/` with timestamped filenames (e.g., `run_20251220_071230.log`).
