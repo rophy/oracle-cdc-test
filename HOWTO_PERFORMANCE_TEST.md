@@ -265,6 +265,22 @@ docker compose exec -e START_TS=1766255880 -e END_TS=1766256480 hammerdb bash -c
 | `container_network_receive_bytes_total` | Network bytes received |
 | `container_network_transmit_bytes_total` | Network bytes transmitted |
 
+#### 10. Do NOT Count events.json Lines
+
+**WARNING**: Do not use `wc -l` on OLR's `events.json` file to measure throughput:
+
+```bash
+# DON'T DO THIS
+wc -l output/olr/events.json  # BAD - slow, misleading
+```
+
+Reasons:
+- **Slow**: The file can grow to tens of GB; counting lines takes minutes
+- **Misleading**: Includes buildschema initial data load (millions of rows), not just workload events
+- **Inaccurate**: Line count doesn't equal DML operation count
+
+**Instead**, always use Prometheus `dml_ops` metrics for accurate throughput measurement.
+
 ### Charts to Include (charts.html)
 
 Use Chart.js for interactive visualization. Include these charts:
