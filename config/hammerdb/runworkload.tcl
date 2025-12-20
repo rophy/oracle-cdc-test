@@ -20,8 +20,10 @@ diset tpcc rampup 2
 diset tpcc duration 5
 diset tpcc allwarehouse false
 
-# Log to temp for output capture
-vuset logtotemp 1
+# Log to output directory for capture
+vuset logtotemp 0
+vuset unique 1
+vuset logdir /output
 
 puts "Configuration:"
 print dict
@@ -47,4 +49,4 @@ vudestroy
 after 5000
 
 puts "\nTEST COMPLETE"
-puts "Check /tmp/hammerdb.log for detailed results"
+puts "Check /output/hammerdb*.log for detailed results"

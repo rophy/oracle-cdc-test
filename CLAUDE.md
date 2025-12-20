@@ -57,26 +57,19 @@ debezium.source.schema.include.list=USR1,TPCC
 **IMPORTANT: ALWAYS use `docker compose` to manage containers. NEVER use `docker` commands directly (e.g., `docker exec`, `docker logs`, `docker rm`). Use `docker compose exec`, `docker compose logs`, etc. instead.**
 
 ```bash
-# Start (Debezium CDC)
+# Start all services
 docker compose up -d
 
-# With OpenLogReplicator (alternative CDC, ~7x faster than Debezium)
-docker compose --profile olr up -d
-
-# With HammerDB
-docker compose --profile hammerdb up -d
-
-# Combined: OLR + HammerDB
-docker compose --profile olr --profile hammerdb up -d
-
-# HammerDB operations
-docker compose --profile hammerdb run --rm hammerdb build   # Create TPCC schema
-docker compose --profile hammerdb run --rm hammerdb run     # Run workload
-docker compose --profile hammerdb run --rm hammerdb delete  # Drop TPCC schema
+# HammerDB operations (exec into running container)
+docker compose exec hammerdb /scripts/entrypoint.sh build   # Create TPCC schema
+docker compose exec hammerdb /scripts/entrypoint.sh run     # Run workload
+docker compose exec hammerdb /scripts/entrypoint.sh delete  # Drop TPCC schema
 
 # Clean restart
 docker compose down -v && docker compose up -d
 ```
+
+**HammerDB output**: Logs are saved to `./output/hammerdb/` with timestamped filenames (e.g., `run_20251220_071230.log`).
 
 ## OpenLogReplicator Configuration
 
@@ -178,11 +171,11 @@ echo "Debezium is streaming"
 ```bash
 # Option A: Stop Debezium during build (recommended)
 docker compose stop dbz
-docker compose --profile hammerdb run --rm hammerdb build
+docker compose exec hammerdb /scripts/entrypoint.sh build
 docker compose start dbz
 
 # Option B: Run in background and monitor (Debezium will crash-loop)
-docker compose --profile hammerdb run --rm hammerdb build &
+docker compose exec hammerdb /scripts/entrypoint.sh build &
 # Monitor in parallel:
 docker compose logs -f dbz olr  # Watch for errors
 docker compose ps               # Check container status
@@ -221,12 +214,16 @@ Run in background and monitor CDC pipeline:
 
 ```bash
 # Start workload in background
-docker compose --profile hammerdb run --rm hammerdb run &
+docker compose exec hammerdb /scripts/entrypoint.sh run &
 
 # Monitor in parallel (run these in separate terminals or check periodically):
 docker compose logs -f dbz olr                              # Watch CDC logs
 docker compose logs kafka-consumer --tail=10 | grep Throughput  # Check throughput
 docker compose ps                                           # Check status
+
+# Check HammerDB output logs
+ls -la output/hammerdb/
+tail -f output/hammerdb/run_*.log
 ```
 
 ### Step 8: Monitor Throughput and Resources

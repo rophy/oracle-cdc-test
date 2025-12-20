@@ -84,11 +84,6 @@ services:
 
   hammerdb:
     image: tpcorg/hammerdb:v4.10
-    profiles:
-      - hammerdb
-    depends_on:
-      oracle:
-        condition: service_healthy
     environment:
       - LD_LIBRARY_PATH=/home/instantclient_21_5
       - ORACLE_LIBRARY=/home/instantclient_21_5/libclntsh.so
@@ -98,10 +93,8 @@ services:
     volumes:
       - ./config/hammerdb:/scripts:ro
       - ./output/hammerdb:/output
-    stdin_open: true
-    tty: true
     entrypoint: ["/scripts/entrypoint.sh"]
-    command: ["shell"]
+    command: ["sleep"]
     networks:
       - cdc-network
 

@@ -39,6 +39,10 @@ case "${1:-shell}" in
     echo "Starting interactive shell..."
     exec ./hammerdbcli
     ;;
+  sleep)
+    echo "Sleeping forever..."
+    exec bash -c "sleep infinity"
+    ;;
   *)
     echo "Unknown command: $1"
     echo "Usage: $0 {build|run|delete|shell}"
