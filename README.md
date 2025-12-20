@@ -393,6 +393,14 @@ Ensure the pod has restarted after Helm upgrade to pick up LD_LIBRARY_PATH:
 kubectl rollout restart deployment/debezium-cdc-hammerdb
 ```
 
+## How-To Guides
+
+| Guide | Description |
+|-------|-------------|
+| [HOWTO_HAMMERDB.md](HOWTO_HAMMERDB.md) | HammerDB commands, web service, REST API for job metrics |
+| [HOWTO_PERFORMANCE_TEST.md](HOWTO_PERFORMANCE_TEST.md) | Running stress tests and generating performance reports |
+| [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Known issues and workarounds |
+
 ## References
 
 - [Debezium Oracle Connector](https://debezium.io/documentation/reference/stable/connectors/oracle.html)
