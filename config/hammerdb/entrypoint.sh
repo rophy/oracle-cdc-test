@@ -22,7 +22,7 @@ echo "  web      - Start web service (port 8080)"
 echo ""
 
 TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
-OUTPUT_DIR="/output"
+OUTPUT_DIR="/tmp"
 
 case "${1:-shell}" in
   build)

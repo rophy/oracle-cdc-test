@@ -2,8 +2,6 @@
 puts "HAMMERDB TPROC-C WORKLOAD RUN"
 puts "=============================="
 
-wsstart
-
 # Set database to Oracle
 dbset db ora
 
@@ -16,16 +14,16 @@ diset connection instance oracle:1521/FREEPDB1
 diset tpcc tpcc_user TPCC
 diset tpcc tpcc_pass TPCCPWD
 
-# Driver settings
+# Driver settings - timed test
 diset tpcc ora_driver timed
-diset tpcc rampup 2
-diset tpcc duration 5
+diset tpcc total_iterations 1000
+diset tpcc rampup 0
+diset tpcc duration 1
 diset tpcc allwarehouse false
 
-# Log to output directory for capture
-vuset logtotemp 0
+# Virtual user settings
+vuset logtotemp 1
 vuset unique 1
-vuset logdir /output
 
 puts "Configuration:"
 print dict
@@ -33,22 +31,13 @@ print dict
 # Load the TPROC-C driver script
 loadscript
 
-puts "\nStarting workload with 8 virtual users..."
-puts "Rampup: 2 minutes"
-puts "Duration: 5 minutes"
+puts "\nStarting workload with 1 virtual user..."
+puts "Rampup: 0 minutes, Duration: 1 minute"
 
 # Set virtual users and run
-vuset vu 8
+vuset vu 1
 vucreate
-vurun
-
-# Wait for test duration plus rampup plus buffer
-set total_seconds [expr { (2 + 5 + 2) * 60 }]
-puts "Waiting ${total_seconds} seconds for test completion..."
-runtimer $total_seconds
-
+set jobid [vurun]
 vudestroy
-after 5000
 
-puts "\nTEST COMPLETE"
-puts "Check /output/hammerdb*.log for detailed results"
+puts "\nTEST COMPLETE - Job ID: $jobid"
