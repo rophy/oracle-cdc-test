@@ -12,30 +12,51 @@ The Oracle official `container-registry.oracle.com/database/free:23.5.0.0-lite` 
 
 ## OLR/Debezium Stalling During HammerDB Workload
 
-**Status**: Under investigation
+**Status**: Fixed
 
-During stress testing with HammerDB (8 VUs, 5 min duration), OLR and Debezium may stop processing events while containers remain running.
+During stress testing with HammerDB (8 VUs, 5 min duration), OLR and Debezium would stop processing events while containers remained running.
 
-**Symptoms observed**:
-- OLR reports "processing redo" for sequence 59, but 170+ archived logs exist
-- Debezium logs stop after ~13 minutes of workload (last log timestamp 23:14:03)
-- Both containers show status "Up" in `docker compose ps`
-- HammerDB completes successfully with "Vuser X: FINISHED SUCCESS" messages
-- Only ~171K events captured vs expected millions
+**Root Cause**: OLR memory exhaustion during high-throughput workload.
 
-**Potential causes** (under investigation):
-- OLR waiting for Debezium acknowledgment (OLR uses network writer, waits for consumer)
-- Debezium connection errors during Oracle SHUTDOWN IMMEDIATE in setup
-- Resource exhaustion or backpressure
+1. **Memory Limit**: OLR's default `max-mb` is 2048 MB. Under heavy load, it exceeded this limit and started swapping transactions to disk.
 
-**Debugging steps**:
+2. **Open Transactions**: Long-running transactions during HammerDB workload caused OLR to track uncommitted changes in swap files, consuming memory.
+
+3. **Confirmation Lag**: The gap between OLR's processed SCN and Debezium's confirmed SCN grew too large, causing backpressure.
+
+4. **Deadlock**: OLR waited on internal mutex (futex_wait) while Debezium was blocked reading from socket. Neither could proceed.
+
+**Fix applied** in `config/openlogreplicator/OpenLogReplicator.json`:
+```json
+{
+  "source": [{
+    "memory": {
+      "min-mb": 256,
+      "max-mb": 4096
+    }
+  }],
+  "target": [{
+    "writer": {
+      "queue-size": 200000
+    }
+  }]
+}
+```
+
+Note: The `memory` element must be inside `source`, not at the root level.
+
+**Debugging tips** (if issue recurs):
 ```bash
-# Check if OLR is waiting for Debezium
-docker compose logs olr --tail=20 | grep -E "sequence|waiting|ERROR"
+# Check for swap files (indicates memory pressure)
+docker compose exec olr ls -la /opt/OpenLogReplicator/*.swap
 
-# Check Debezium for errors
-docker compose logs dbz --tail=50 | grep -E "ERROR|Exception|connection"
+# Check OLR memory usage
+docker stats --no-stream oracle-cdc-test-olr-1
 
-# Verify both are processing
-docker compose logs -f dbz olr  # Watch in real-time
+# Check thread states
+docker compose exec olr cat /proc/$(pgrep OpenLogReplicator)/wchan
+docker compose exec dbz jcmd 1 Thread.print | grep -A5 "change-event-source-coordinator"
+
+# Check checkpoint gap (confirmed vs processed)
+docker compose exec olr cat /opt/OpenLogReplicator/checkpoint/ORACLE-chkpt.json
 ```

@@ -1,0 +1,11 @@
+databases:
+  default:
+    url: oracle:1521/FREE
+    username: c##dbzuser
+    password: dbzpwd
+    queryTimeout: 5
+    maxOpenConns: 5
+    maxIdleConns: 5
+
+metrics:
+  default: /exporter/default-metrics.toml

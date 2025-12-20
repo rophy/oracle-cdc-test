@@ -4,6 +4,11 @@
     {
       "alias": "FREE",
       "name": "ORACLE",
+      "metrics": {
+        "type": "prometheus",
+        "bind": "0.0.0.0:9161",
+        "tag-names": "filter"
+      },
       "reader": {
         "type": "online",
         "con-id": 3,
@@ -24,6 +29,10 @@
         "scn-type": 1,
         "timestamp-all": 1
       },
+      "memory": {
+        "min-mb": 256,
+        "max-mb": 4096
+      },
       "filter": {
         "table": [
           {"owner": "USR1", "table": ".*"},
@@ -38,7 +47,8 @@
       "source": "FREE",
       "writer": {
         "type": "network",
-        "uri": "0.0.0.0:9000"
+        "uri": "0.0.0.0:9000",
+        "queue-size": 200000
       }
     }
   ]
