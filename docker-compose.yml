@@ -167,8 +167,7 @@ services:
 
   # Debezium with OpenLogReplicator backend
   dbz:
-    # image: quay.io/debezium/server:3.3.2.Final
-    image: debezium-server:patched  # Patched with auto-commit fix
+    image: rophy/debezium-server:3.3.2-4d8ca7f  # https://github.com/rophy/debezium/commit/4d8ca7f
     restart: on-failure
     depends_on:
       debezium-init:
