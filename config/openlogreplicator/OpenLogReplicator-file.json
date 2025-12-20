@@ -1,0 +1,61 @@
+{
+  "version": "1.8.7",
+  "source": [
+    {
+      "alias": "FREE",
+      "name": "ORACLE",
+      "metrics": {
+        "type": "prometheus",
+        "bind": "0.0.0.0:9161",
+        "tag-names": "filter"
+      },
+      "reader": {
+        "type": "online",
+        "con-id": 3,
+        "user": "c##olruser",
+        "password": "olrpwd",
+        "server": "oracle:1521/FREEPDB1"
+      },
+      "format": {
+        "type": "json",
+        "column": 2,
+        "db": 3,
+        "interval-dts": 9,
+        "interval-ytm": 4,
+        "message": 2,
+        "rid": 1,
+        "schema": 7,
+        "scn": 0,
+        "scn-type": 1,
+        "timestamp-all": 1
+      },
+      "memory": {
+        "min-mb": 256,
+        "max-mb": 4096
+      },
+      "state": {
+        "type": "disk",
+        "interval-s": 10,
+        "interval-mb": 100
+      },
+      "filter": {
+        "table": [
+          {"owner": "USR1", "table": ".*"},
+          {"owner": "TPCC", "table": ".*"}
+        ]
+      }
+    }
+  ],
+  "target": [
+    {
+      "alias": "file-output",
+      "source": "FREE",
+      "writer": {
+        "type": "file",
+        "output": "/output/events.json",
+        "max-file-size": 0,
+        "append": 1
+      }
+    }
+  ]
+}

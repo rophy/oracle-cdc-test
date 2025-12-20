@@ -33,70 +33,10 @@ services:
     networks:
       - cdc-network
 
-  kafka:
-    image: apache/kafka:3.9.0
-    environment:
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=broker,controller
-      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
-      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - cdc-network
-
-  kafka-consumer:
-    image: python:3.11-slim
-    command: sh -c "pip install kafka-python-ng && python /app/kafka-consumer.py"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - KAFKA_TOPIC_PATTERN=oracle.*
-    volumes:
-      - ./config/kafka-consumer/kafka-consumer.py:/app/kafka-consumer.py:ro
-      - kafka-consumer-output:/app/output
-    networks:
-      - cdc-network
-
-  # Init container to fix Debezium volume permissions (Debezium runs as UID 185)
-  debezium-init:
-    image: busybox:1.36
-    command: ["sh", "-c", "chown -R 185:185 /debezium/data && chmod 755 /debezium/data"]
-    volumes:
-      - debezium-data:/debezium/data
-    restart: "no"
-
-  jmx-exporter:
-    image: sscaling/jmx-prometheus-exporter:0.12.0
-    depends_on:
-      - dbz
-    environment:
-      - SERVICE_PORT=9404
-      - CONFIG_YML=/etc/jmx-exporter/config.yaml
-    volumes:
-      - ./config/jmx-exporter/config.yaml:/etc/jmx-exporter/config.yaml:ro
-    networks:
-      - cdc-network
-
   prometheus:
     image: prom/prometheus:v2.47.0
     volumes:
-      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/prometheus-olr-only.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -117,39 +57,16 @@ services:
     networks:
       - cdc-network
 
-  # Oracle database metrics exporter
-  oracle-exporter:
-    image: container-registry.oracle.com/database/observability-exporter:2.2.0
-    depends_on:
-      oracle:
-        condition: service_healthy
-    command:
-      - --config.file=/exporter/config.yaml
-    volumes:
-      - ./config/oracle-exporter:/exporter:ro
-    networks:
-      - cdc-network
-
-  # Kafka metrics exporter
-  kafka-exporter:
-    image: danielqsj/kafka-exporter:v1.7.0
-    depends_on:
-      kafka:
-        condition: service_healthy
-    command:
-      - --kafka.server=kafka:9092
-    networks:
-      - cdc-network
-
   # Init container to fix OLR checkpoint volume permissions (OLR runs as UID 54321)
   olr-init:
     image: busybox:1.36
-    command: ["sh", "-c", "chown -R 54321:54321 /checkpoint"]
+    command: ["sh", "-c", "chown -R 54321:54321 /checkpoint /output"]
     volumes:
       - olr-checkpoint:/checkpoint
+      - olr-output:/output
     restart: "no"
 
-  # OpenLogReplicator - reads redo logs directly for Debezium OLR adapter
+  # OpenLogReplicator - writes directly to file (no Debezium)
   olr:
     build: ./olr
     depends_on:
@@ -159,30 +76,9 @@ services:
         condition: service_healthy
     volumes:
       - oracle-oradata:/opt/oracle/oradata:ro
-      - ./config/openlogreplicator/OpenLogReplicator.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
+      - ./config/openlogreplicator/OpenLogReplicator-file.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
       - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
       - olr-output:/output
-    networks:
-      - cdc-network
-
-  # Debezium with OpenLogReplicator backend
-  dbz:
-    image: rophy/debezium-server:3.3.2-4d8ca7f  # https://github.com/rophy/debezium/commit/4d8ca7f
-    restart: on-failure
-    depends_on:
-      debezium-init:
-        condition: service_completed_successfully
-      oracle:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      olr:
-        condition: service_started
-    environment:
-      - JAVA_OPTS=-Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.rmi.port=1099 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=dbz
-    volumes:
-      - ./config/debezium/application-olr.properties:/debezium/config/application.properties:ro
-      - debezium-data:/debezium/data
     networks:
       - cdc-network
 
@@ -210,9 +106,6 @@ services:
 
 volumes:
   oracle-oradata:
-  debezium-data:
-  kafka-data:
-  kafka-consumer-output:
   prometheus-data:
   olr-checkpoint:
   olr-output:
