@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - 60 VUs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Performance Test - 60 VUs</h1>
+    <p class="meta">
+        Start: 2025-12-20 20:12:00 UTC | End: 2025-12-20 20:22:00 UTC | Duration: 10 min
+    </p>
+
+    
+    
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>oracle CPU</td>
+                    <td style="text-align: right;">3.0%</td>
+                    <td style="text-align: right;">20.8%</td>
+                    <td style="text-align: right;">34.6%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr CPU</td>
+                    <td style="text-align: right;">0.35%</td>
+                    <td style="text-align: right;">2.1%</td>
+                    <td style="text-align: right;">14.1%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Memory</td>
+                    <td style="text-align: right;">5.2K MB</td>
+                    <td style="text-align: right;">7.6K MB</td>
+                    <td style="text-align: right;">7.9K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Memory</td>
+                    <td style="text-align: right;">657 MB</td>
+                    <td style="text-align: right;">1.2K MB</td>
+                    <td style="text-align: right;">5.0K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Net RX</td>
+                    <td style="text-align: right;">20.4 B/s</td>
+                    <td style="text-align: right;">10.1K B/s</td>
+                    <td style="text-align: right;">32.9K B/s</td>
+                    <td style="text-align: right;">~6.0M B</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Net RX</td>
+                    <td style="text-align: right;">142 B/s</td>
+                    <td style="text-align: right;">151 B/s</td>
+                    <td style="text-align: right;">159 B/s</td>
+                    <td style="text-align: right;">~90.9K B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Net TX</td>
+                    <td style="text-align: right;">54.5 B/s</td>
+                    <td style="text-align: right;">31.3K B/s</td>
+                    <td style="text-align: right;">58.4K B/s</td>
+                    <td style="text-align: right;">~18.8M B</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Net TX</td>
+                    <td style="text-align: right;">857 B/s</td>
+                    <td style="text-align: right;">909 B/s</td>
+                    <td style="text-align: right;">949 B/s</td>
+                    <td style="text-align: right;">~545.7K B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle FS Read</td>
+                    <td style="text-align: right;">661 B/s</td>
+                    <td style="text-align: right;">240.2K B/s</td>
+                    <td style="text-align: right;">1.6M B/s</td>
+                    <td style="text-align: right;">~144.1M B</td>
+                </tr>
+                
+                <tr>
+                    <td>olr FS Read</td>
+                    <td style="text-align: right;">34.9K B/s</td>
+                    <td style="text-align: right;">20.8M B/s</td>
+                    <td style="text-align: right;">395.8M B/s</td>
+                    <td style="text-align: right;">~12,501.9M B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle FS Write</td>
+                    <td style="text-align: right;">160.8K B/s</td>
+                    <td style="text-align: right;">10.3M B/s</td>
+                    <td style="text-align: right;">19.5M B/s</td>
+                    <td style="text-align: right;">~6,174.6M B</td>
+                </tr>
+                
+                <tr>
+                    <td>olr FS Write</td>
+                    <td style="text-align: right;">355.6K B/s</td>
+                    <td style="text-align: right;">1.2M B/s</td>
+                    <td style="text-align: right;">2.1M B/s</td>
+                    <td style="text-align: right;">~692.4M B</td>
+                </tr>
+                
+                <tr>
+                    <td>dml_ops{filter="out"}</td>
+                    <td style="text-align: right;">0.10/s</td>
+                    <td style="text-align: right;">563/s</td>
+                    <td style="text-align: right;">1.1K/s</td>
+                    <td style="text-align: right;">~337.7K</td>
+                </tr>
+                
+                <tr>
+                    <td>bytes_sent</td>
+                    <td style="text-align: right;">617.9M</td>
+                    <td style="text-align: right;">959.7M</td>
+                    <td style="text-align: right;">1,292.0M</td>
+                    <td style="text-align: right;">+674.1M</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    
+    
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Network Receive (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netRxChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Network Transmit (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netTxChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Filesystem Read (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsReadChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Filesystem Write (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsWriteChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Dml Ops{Filter="Out"} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart1"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Bytes Sent (total)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="totalChart1"></canvas>
+        </div>
+    </div>
+    
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"];
+
+        
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle CPU %',
+                        data: [5.85, 12.18, 33.9, 15.42, 25.05, 21.73, 15.89, 34.58, 26.15, 10.15, 23.06, 24.07, 19.02, 34.61, 16.14, 23.55, 25.42, 22.7, 21.66, 23.13, 3.04],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr CPU %',
+                        data: [0.42, 1.06, 2.12, 1.07, 1.79, 1.86, 0.99, 2.39, 1.59, 0.35, 1.74, 1.85, 1.0, 2.4, 1.06, 1.65, 1.85, 1.09, 2.19, 1.74, 14.12],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Memory (MB)',
+                        data: [7728.5, 7721.8, 7848.6, 7860.9, 7838.7, 7872.7, 7802.2, 7829.7, 7837.8, 7824.1, 7772.6, 7801.8, 7795.9, 7808.4, 7848.2, 7833.0, 7759.6, 7682.6, 7683.3, 7034.4, 5238.6],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Memory (MB)',
+                        data: [657.4, 664.0, 721.4, 749.0, 793.5, 846.9, 863.2, 897.3, 945.5, 962.6, 1013.9, 1048.1, 1082.5, 1131.7, 1149.0, 1197.4, 1251.3, 1269.1, 1322.9, 1356.2, 4996.2],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Network RX Chart
+        new Chart(document.getElementById('netRxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle RX (B/s)',
+                        data: [20.4, 10169.5, 32947.3, 5941.4, 13121.4, 10384.6, 5011.6, 14104.5, 9368.8, 130.0, 9971.7, 10543.1, 5121.8, 14067.3, 4903.9, 9394.0, 14004.0, 10578.7, 10463.0, 10977.5, 0.0],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr RX (B/s)',
+                        data: [153.9, 157.3, 148.8, 148.5, 153.0, 147.3, 155.6, 157.5, 142.2, 154.0, 149.2, 153.0, 150.0, 149.4, 155.5, 150.6, 147.7, 159.3, 154.2, 144.5, 149.3],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Network TX Chart
+        new Chart(document.getElementById('netTxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle TX (B/s)',
+                        data: [54.5, 20776.0, 58433.6, 19089.7, 46249.0, 36033.5, 17440.6, 49944.2, 33835.4, 117.8, 35004.5, 35162.8, 17986.3, 49905.8, 16900.4, 33393.5, 48945.6, 36269.8, 36756.4, 33941.4, 0.0],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr TX (B/s)',
+                        data: [926.6, 916.7, 896.6, 894.9, 922.0, 887.8, 923.8, 949.1, 856.8, 927.9, 898.8, 922.2, 904.3, 901.0, 937.6, 908.3, 890.8, 946.5, 929.6, 871.0, 887.1],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Filesystem Read Chart
+        new Chart(document.getElementById('fsReadChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Read (B/s)',
+                        data: [6798.1, 324435.6, 308227.7, 264258.1, 214043.5, 206078.1, 99586.8, 537196.5, 163164.6, 490406.3, 82372.7, 119393.4, 1582992.0, 146685.7, 180536.3, 59583.1, 105752.5, 67329.8, 35279.7, 49452.0, 660.9],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Read (B/s)',
+                        data: [90356.7, 1487348.2, 3355611.2, 1250344.6, 2424694.2, 2632416.7, 1366017.0, 3891769.3, 2241321.4, 34913.4, 2401668.2, 2673687.0, 1301562.7, 3795292.8, 1267947.4, 2310556.7, 2752573.8, 1361719.9, 2555314.4, 2571589.6, 395799481.8],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Filesystem Write Chart
+        new Chart(document.getElementById('fsWriteChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Write (B/s)',
+                        data: [3733153.6, 2706302.6, 19124877.4, 5091054.2, 12868560.8, 11546881.0, 6649550.6, 17465621.3, 13602010.0, 3517509.4, 13467470.7, 11612459.3, 6340154.8, 15888896.5, 5938472.8, 19472276.5, 13905185.8, 8909610.3, 9123836.0, 14985917.0, 160760.3],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Write (B/s)',
+                        data: [719146.3, 685583.7, 1338217.9, 355579.8, 1386449.3, 649531.2, 1009601.0, 1753752.6, 1999328.9, 780576.0, 791230.0, 2105901.4, 1358488.0, 1326548.2, 387726.5, 1260371.1, 1423141.2, 1419092.0, 1825622.6, 1018462.3, 640055.2],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Rate Chart 1
+        new Chart(document.getElementById('rateChart1'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'dml_ops{filter="out"} (events/sec)',
+                    data: [2.0, 346.2, 1024.2, 355.9, 533.2, 672.8, 327.3, 1101.6, 658.1, 301.0, 685.1, 692.9, 335.6, 1002.1, 330.3, 624.3, 692.6, 731.0, 724.1, 679.7, 0.1],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Total Chart 1
+        new Chart(document.getElementById('totalChart1'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'bytes_sent',
+                    data: [617872358.0, 634633778.0, 683076588.0, 700988351.0, 742574952.0, 783047303.0, 799020005.0, 851838874.0, 891572432.0, 922771897.0, 957235958.0, 990883468.0, 1024589077.0, 1072787191.0, 1089330890.0, 1136195565.0, 1188148028.0, 1223758218.0, 1258858717.0, 1291917859.0, 1291963001.0],
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Total' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+    </script>
+</body>
+</html>
