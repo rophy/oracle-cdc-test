@@ -17,6 +17,8 @@ echo "  build    - Build TPROC-C schema"
 echo "  run      - Run TPROC-C workload"
 echo "  delete   - Delete TPROC-C schema"
 echo "  shell    - Interactive hammerdbcli shell"
+echo "  cmd      - Run one-shot TCL command"
+echo "  web      - Start web service (port 8080)"
 echo ""
 
 TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
@@ -39,13 +41,24 @@ case "${1:-shell}" in
     echo "Starting interactive shell..."
     exec ./hammerdbcli
     ;;
+  cmd)
+    shift
+    echo "$@" > /tmp/cmd.tcl
+    ./hammerdbcli auto /tmp/cmd.tcl
+    ;;
+  web)
+    echo "Initializing jobs database..."
+    echo "jobs" > /tmp/init.tcl
+    ./hammerdbcli auto /tmp/init.tcl
+    exec ./hammerdbws wait
+    ;;
   sleep)
     echo "Sleeping forever..."
     exec bash -c "sleep infinity"
     ;;
   *)
     echo "Unknown command: $1"
-    echo "Usage: $0 {build|run|delete|shell}"
+    echo "Usage: $0 {build|run|delete|shell|cmd|web}"
     exit 1
     ;;
 esac

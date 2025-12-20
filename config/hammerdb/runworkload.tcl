@@ -2,6 +2,8 @@
 puts "HAMMERDB TPROC-C WORKLOAD RUN"
 puts "=============================="
 
+wsstart
+
 # Set database to Oracle
 dbset db ora
 
