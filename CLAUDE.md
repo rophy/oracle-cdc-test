@@ -272,3 +272,115 @@ curl -s "http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_to
 | JMX exporter | 9404 |
 | Prometheus | 9090 |
 | cAdvisor | 8080 |
+
+## Performance Report Generation
+
+After running a HammerDB stress test, generate a performance report with time-series charts.
+
+### Report Structure
+
+```
+reports/performance/YYYYMMDD_HHMM/
+├── README.md      # Markdown summary with test config, results, key findings
+└── charts.html    # Interactive Chart.js charts for time-series visualization
+```
+
+### Data Collection
+
+#### 1. Test Configuration (for README.md)
+
+```bash
+# HammerDB settings (check hammerdb container or config)
+# - Warehouses, Virtual Users, Rampup Time, Duration
+
+# Infrastructure versions
+docker compose images | grep -E "oracle|olr|dbz|kafka"
+```
+
+#### 2. Kafka Consumer Throughput (events/sec)
+
+```bash
+# Extract throughput readings from kafka-consumer logs
+docker compose logs kafka-consumer 2>&1 | grep -E "Throughput:" | \
+  awk '{print $1, $NF}' | sed 's/events\/sec//'
+```
+
+#### 3. Total Events by Topic
+
+```bash
+# Query Prometheus for final topic offsets
+docker compose exec -T prometheus wget -qO- \
+  'http://localhost:9090/api/v1/query?query=kafka_topic_partition_current_offset' | jq -r '
+  .data.result[] | "\(.metric.topic) \(.value[1])"' | sort
+```
+
+#### 4. OLR Throughput (events/sec)
+
+```bash
+# Query Prometheus for OLR processing rate
+docker compose exec -T prometheus wget -qO- \
+  'http://localhost:9090/api/v1/query_range?query=sum(rate(dml_ops{filter="out"}[30s]))&start=START_TIME&end=END_TIME&step=10s' | \
+  jq -r '.data.result[0].values | .[] | "\(.[0]) \(.[1])"'
+```
+
+#### 5. Debezium → Kafka Throughput (events/sec)
+
+```bash
+# Query Prometheus for Kafka offset rate (Debezium output)
+docker compose exec -T prometheus wget -qO- \
+  'http://localhost:9090/api/v1/query_range?query=sum(rate(kafka_topic_partition_current_offset[30s]))&start=START_TIME&end=END_TIME&step=10s' | \
+  jq -r '.data.result[0].values | .[] | "\(.[0]) \(.[1])"'
+```
+
+#### 6. Container Resource Usage
+
+```bash
+# Memory (MB)
+docker compose exec -T prometheus wget -qO- \
+  'http://localhost:9090/api/v1/query_range?query=container_memory_usage_bytes{name=~".*oracle.*|.*olr.*|.*dbz.*|.*kafka.*"}/1024/1024&start=START_TIME&end=END_TIME&step=10s' | jq
+
+# CPU (%)
+docker compose exec -T prometheus wget -qO- \
+  'http://localhost:9090/api/v1/query_range?query=rate(container_cpu_usage_seconds_total{name=~".*oracle.*|.*olr.*|.*dbz.*|.*kafka.*"}[30s])*100&start=START_TIME&end=END_TIME&step=10s' | jq
+```
+
+### Charts to Include (charts.html)
+
+Use Chart.js for interactive visualization. Include these charts:
+
+**Component Throughput (events/sec):**
+1. **OpenLogReplicator** - `rate(dml_ops{filter="out"}[30s])` - Shows bursty redo log processing
+2. **Debezium → Kafka** - `rate(kafka_topic_partition_current_offset[30s])` - Output to Kafka
+3. **Kafka Consumer** - From kafka-consumer logs - End-to-end consumption
+4. **Kafka Topics** - Line chart breakdown by topic (ORDER_LINE, STOCK, etc.)
+
+**Resource Usage:**
+5. **Container Memory** - Oracle, OLR, Debezium, Kafka (MB over time)
+6. **Container CPU** - Oracle, OLR, Debezium, Kafka (% over time)
+
+### Key Metrics for README.md
+
+| Metric | Source |
+|--------|--------|
+| Total Events Captured | `sum(kafka_topic_partition_current_offset)` |
+| Peak Throughput | Max from kafka-consumer logs |
+| Average Throughput | Mean from kafka-consumer logs |
+| OLR Peak Processing | Max from `rate(dml_ops[30s])` |
+| OLR Memory Used | `memory_used_mb` metric |
+| Test Duration | HammerDB rampup + duration |
+
+### Example Prometheus Time Range
+
+Replace `START_TIME` and `END_TIME` with ISO8601 timestamps:
+
+```bash
+START_TIME="2025-12-20T02:00:00Z"
+END_TIME="2025-12-20T02:25:00Z"
+```
+
+### Notes on Data Interpretation
+
+- **OLR processes in bursts**: OLR reads archived redo logs, so throughput spikes when logs are archived, then drops to 0 while waiting
+- **Debezium buffers from OLR**: Debezium receives from OLR's network output and writes to Kafka at a more steady rate
+- **Kafka Consumer lags slightly**: Consumer reads from Kafka with its own timing, showing end-to-end latency
+- **Oracle Free limits**: 2 cores, 2 GB memory - CPU shown as % of available cores (200% max)
