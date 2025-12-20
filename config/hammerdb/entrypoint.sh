@@ -19,18 +19,21 @@ echo "  delete   - Delete TPROC-C schema"
 echo "  shell    - Interactive hammerdbcli shell"
 echo ""
 
+TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+OUTPUT_DIR="/output"
+
 case "${1:-shell}" in
   build)
     echo "Building TPROC-C schema..."
-    ./hammerdbcli auto /scripts/buildschema.tcl
+    stdbuf -oL ./hammerdbcli auto /scripts/buildschema.tcl 2>&1 | tee "${OUTPUT_DIR}/build_${TIMESTAMP}.log"
     ;;
   run)
     echo "Running TPROC-C workload..."
-    ./hammerdbcli auto /scripts/runworkload.tcl
+    stdbuf -oL ./hammerdbcli auto /scripts/runworkload.tcl 2>&1 | tee "${OUTPUT_DIR}/run_${TIMESTAMP}.log"
     ;;
   delete)
     echo "Deleting TPROC-C schema..."
-    ./hammerdbcli auto /scripts/deleteschema.tcl
+    stdbuf -oL ./hammerdbcli auto /scripts/deleteschema.tcl 2>&1 | tee "${OUTPUT_DIR}/delete_${TIMESTAMP}.log"
     ;;
   shell)
     echo "Starting interactive shell..."

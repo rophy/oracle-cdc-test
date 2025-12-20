@@ -63,7 +63,7 @@ services:
     command: ["sh", "-c", "chown -R 54321:54321 /checkpoint /output"]
     volumes:
       - olr-checkpoint:/checkpoint
-      - olr-output:/output
+      - ./output:/output
     restart: "no"
 
   # OpenLogReplicator - writes directly to file (no Debezium)
@@ -78,7 +78,7 @@ services:
       - oracle-oradata:/opt/oracle/oradata:ro
       - ./config/openlogreplicator/OpenLogReplicator-file.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
       - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
-      - olr-output:/output
+      - ./output:/output
     networks:
       - cdc-network
 
@@ -97,6 +97,7 @@ services:
       - ORACLE_SERVICE=FREEPDB1
     volumes:
       - ./config/hammerdb:/scripts:ro
+      - ./output/hammerdb:/output
     stdin_open: true
     tty: true
     entrypoint: ["/scripts/entrypoint.sh"]
@@ -108,7 +109,6 @@ volumes:
   oracle-oradata:
   prometheus-data:
   olr-checkpoint:
-  olr-output:
 
 networks:
   cdc-network:
