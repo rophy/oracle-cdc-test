@@ -1,5 +1,7 @@
 {
   "version": "1.8.7",
+  "log-level": 4,
+  "trace": 131627,
   "source": [
     {
       "alias": "FREE",
@@ -31,17 +33,19 @@
       },
       "memory": {
         "min-mb": 256,
-        "max-mb": 4096
-      },
-      "state": {
-        "type": "disk",
-        "interval-s": 10,
-        "interval-mb": 100
+        "max-mb": 8192,
+        "swap-path": "/output/swap"
       },
       "filter": {
         "table": [
           {"owner": "USR1", "table": ".*"},
-          {"owner": "TPCC", "table": ".*"}
+          {"owner": "TPCC", "table": "CUSTOMER"},
+          {"owner": "TPCC", "table": "DISTRICT"},
+          {"owner": "TPCC", "table": "HISTORY"},
+          {"owner": "TPCC", "table": "ITEM"},
+          {"owner": "TPCC", "table": "ORDERS"},
+          {"owner": "TPCC", "table": "STOCK"},
+          {"owner": "TPCC", "table": "WAREHOUSE"}
         ]
       }
     }

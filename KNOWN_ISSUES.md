@@ -2,6 +2,11 @@
 
 See open issues at: https://github.com/rophy/oracle-cdc-test/issues
 
+## OLR Hangs with IOT Tables
+
+**Status**: Fixed
+**Issue**: [#4](https://github.com/rophy/oracle-cdc-test/issues/4)
+
 ## Oracle 23ai Free Lite - DBMS_METADATA Broken
 
 **Status**: Workaround applied

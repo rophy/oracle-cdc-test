@@ -31,7 +31,13 @@
       },
       "memory": {
         "min-mb": 256,
-        "max-mb": 4096
+        "max-mb": 4096,
+        "swap-path": "/output/swap"
+      },
+      "state": {
+        "type": "disk",
+        "interval-s": 10,
+        "interval-mb": 100
       },
       "filter": {
         "table": [

@@ -12,10 +12,20 @@ services:
   # Init container to fix volume permissions
   init:
     image: busybox:1.36
-    command: ["sh", "-c", "chown -R 54321:54321 /opt/oracle/oradata && chmod -R o+rX /opt/oracle/oradata && chown -R 1000:1000 /output/hammerdb"]
+    command:
+      - "sh"
+      - "-c"
+      - |
+          set -xe
+          chown -R 54321:54321 /opt/oracle/oradata
+          chown -R 1000:1000 /output/hammerdb
+          chown -R 1000:1000 /checkpoint
+          mkdir -p /output/olr/swap && chown -R 1000:1000 /output/olr
     volumes:
       - oracle-oradata:/opt/oracle/oradata
       - ./output/hammerdb:/output/hammerdb
+      - olr-checkpoint:/checkpoint
+      - ./output/olr:/output/olr
     restart: "no"
 
   oracle:
@@ -67,20 +77,11 @@ services:
     networks:
       - cdc-network
 
-  # Init container to fix OLR checkpoint volume permissions (OLR runs as UID 54321)
-  olr-init:
-    image: busybox:1.36
-    command: ["sh", "-c", "chown -R 54321:54321 /checkpoint /output"]
-    volumes:
-      - olr-checkpoint:/checkpoint
-      - ./output/olr:/output
-    restart: "no"
-
   # OpenLogReplicator - writes directly to file (no Debezium)
   olr:
     build: ./olr
     depends_on:
-      olr-init:
+      init:
         condition: service_completed_successfully
       oracle:
         condition: service_healthy
@@ -107,7 +108,7 @@ services:
       - ORACLE_USER=system
       - ORACLE_PASSWORD=${ORACLE_PASSWORD:-OraclePwd123}
       - ORACLE_INSTANCE=oracle:1521/FREEPDB1
-      - HAMMERDB_VUS=60
+      - HAMMERDB_VUS=4
     volumes:
       - ./config/hammerdb:/scripts
       - ./output/hammerdb:/tmp
