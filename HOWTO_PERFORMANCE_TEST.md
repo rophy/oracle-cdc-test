@@ -4,16 +4,25 @@ This guide covers how to run HammerDB stress tests and generate performance repo
 
 ## Prerequisites
 
-- Docker Compose stack running (`docker compose up -d`)
+- Docker Compose stack running with a CDC profile
 - Oracle database initialized (check for `/opt/oracle/oradata/dbinit` marker)
 
-## HammerDB Stress Test Procedure
+## Profiles
 
-To accurately measure CDC throughput, follow these steps in order. The key is to complete the initial snapshot **before** running the HammerDB workload.
+Choose your CDC profile:
+
+| Profile | Command | Description |
+|---------|---------|-------------|
+| `olr-only` | `docker compose --profile=olr-only up -d` | OLR writes directly to file (lightweight) |
+| `full` | `docker compose --profile=full up -d` | Full pipeline: OLR → Debezium → Kafka |
+
+## HammerDB Stress Test Procedure (Full Profile)
+
+To accurately measure CDC throughput with the full Debezium/Kafka pipeline, follow these steps in order. The key is to complete the initial snapshot **before** running the HammerDB workload.
 
 **IMPORTANT**: When running HammerDB commands (build/run), execute them in background and continuously monitor container logs. Debezium may crash when encountering unknown tables - see `KNOWN_ISSUES.md` for details.
 
-### Step 1: Clean Up and Start Base Stack
+### Step 1: Clean Up and Start Stack
 
 ```bash
 docker compose down -v
@@ -21,7 +30,8 @@ docker compose down -v
 # Clean up output files from previous runs (runs as root to handle permission issues)
 docker compose --profile=clean run --rm clean
 
-docker compose up -d
+# Start with full profile (OLR → Debezium → Kafka)
+docker compose --profile=full up -d
 ```
 
 ### Step 2: Wait for Oracle Setup to Complete
@@ -57,8 +67,8 @@ docker compose start dbz
 # Option B: Run in background and monitor (Debezium will crash-loop)
 docker compose exec hammerdb /scripts/entrypoint.sh build &
 # Monitor in parallel:
-docker compose logs -f dbz olr  # Watch for errors
-docker compose ps               # Check container status
+docker compose logs -f dbz olr-dbz  # Watch for errors
+docker compose ps                   # Check container status
 ```
 
 ### Step 5: Enable Supplemental Logging for TPCC Tables
@@ -73,7 +83,7 @@ docker compose exec -T oracle sqlplus -S / as sysdba < config/oracle/enable-tpcc
 # Record timestamp before restart
 RESTART_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
 
-docker compose restart olr dbz
+docker compose restart olr-dbz dbz
 
 # Wait for Debezium to complete snapshot and start streaming
 # This may take several minutes as it snapshots all TPCC tables (~4M records)
@@ -85,7 +95,7 @@ done
 echo "Debezium is now streaming"
 
 # Verify OLR is processing
-docker compose logs olr --tail=5 2>&1 | grep -E "processing redo|ERROR"
+docker compose logs olr-dbz --tail=5 2>&1 | grep -E "processing redo|ERROR"
 ```
 
 ### Step 7: Run HammerDB Workload
@@ -97,7 +107,7 @@ Run in background and monitor CDC pipeline:
 docker compose exec hammerdb /scripts/entrypoint.sh run &
 
 # Monitor in parallel (run these in separate terminals or check periodically):
-docker compose logs -f dbz olr                              # Watch CDC logs
+docker compose logs -f dbz olr-dbz                          # Watch CDC logs
 docker compose logs kafka-consumer --tail=10 | grep Throughput  # Check throughput
 docker compose ps                                           # Check status
 
@@ -116,7 +126,7 @@ docker compose logs kafka-consumer --tail=10 | grep Throughput
 docker compose exec kafka-consumer wc -l /app/output/events.json
 
 # Container resource usage
-docker stats --no-stream | grep -E "oracle|dbz|olr|kafka"
+docker stats --no-stream | grep -E "oracle|dbz|olr-dbz|kafka"
 
 # Prometheus metrics (if available)
 curl -s "http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_total"

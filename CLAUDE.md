@@ -52,13 +52,30 @@ debezium.source.database.connection.adapter=olr
 debezium.source.schema.include.list=USR1,TPCC
 ```
 
+## Docker Compose Profiles
+
+The stack uses profiles to support different CDC architectures:
+
+| Profile | Description | Services |
+|---------|-------------|----------|
+| (none) | Base stack only | oracle, prometheus, cadvisor, oracle-exporter, hammerdb |
+| `olr-only` | OLR writes directly to file | + olr-file |
+| `full` | Full CDC pipeline | + olr-dbz, kafka, kafka-consumer, dbz, jmx-exporter, kafka-exporter |
+| `clean` | Cleanup utility | clean (manual run) |
+
 ## Docker Compose Commands
 
 **IMPORTANT: ALWAYS use `docker compose` to manage containers. NEVER use `docker` commands directly (e.g., `docker exec`, `docker logs`, `docker rm`). Use `docker compose exec`, `docker compose logs`, etc. instead.**
 
 ```bash
-# Start all services
+# Start base stack only (Oracle + monitoring)
 docker compose up -d
+
+# OLR direct to file (lightweight, no Debezium/Kafka)
+docker compose --profile=olr-only up -d
+
+# Full CDC pipeline (OLR → Debezium → Kafka)
+docker compose --profile=full up -d
 
 # HammerDB operations (exec into running container)
 docker compose exec hammerdb /scripts/entrypoint.sh build   # Create TPCC schema
@@ -68,7 +85,7 @@ docker compose exec hammerdb /scripts/entrypoint.sh delete  # Drop TPCC schema
 # Clean restart (includes output file cleanup)
 docker compose down -v
 docker compose --profile=clean run --rm clean
-docker compose up -d
+docker compose --profile=olr-only up -d   # or --profile=full
 ```
 
 **HammerDB output**: Logs are saved to `./output/hammerdb/` with timestamped filenames (e.g., `run_20251220_071230.log`).
@@ -123,14 +140,14 @@ This achieves the same result as the documented `"scn-all": 1`.
 # Insert test row
 docker compose exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
 
-# Check captured events (via kafka-consumer)
+# Check captured events (olr-only profile - local file)
+tail -1 ./output/olr/events.json | jq
+
+# Check captured events (full profile - via kafka-consumer)
 docker compose exec kafka-consumer tail -1 /app/output/events.json | jq
 
-# List Kafka topics
+# List Kafka topics (full profile)
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
-
-# Check captured events (OpenLogReplicator direct output)
-docker compose exec olr tail -1 /output/events.json | jq
 ```
 
 ## Ports
