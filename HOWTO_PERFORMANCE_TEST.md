@@ -2,12 +2,20 @@
 
 This guide covers how to run HammerDB stress tests and generate performance reports.
 
-## Prerequisites
+## Part 1: Setup (Common Steps)
 
-- Docker Compose stack running with a CDC profile
-- Oracle database initialized (check for `/opt/oracle/oradata/dbinit` marker)
+These steps are the same regardless of which CDC profile you choose.
 
-## Profiles
+### Step 1.1: Clean Up Previous Run
+
+```bash
+docker compose down -v
+
+# Clean up output files from previous runs (runs as root to handle permission issues)
+docker compose --profile=clean run --rm clean
+```
+
+### Step 1.2: Start the Stack
 
 Choose your CDC profile:
 
@@ -16,25 +24,7 @@ Choose your CDC profile:
 | `olr-only` | `docker compose --profile=olr-only up -d` | OLR writes directly to file (lightweight) |
 | `full` | `docker compose --profile=full up -d` | Full pipeline: OLR → Debezium → Kafka |
 
-## HammerDB Stress Test Procedure (Full Profile)
-
-To accurately measure CDC throughput with the full Debezium/Kafka pipeline, follow these steps in order. The key is to complete the initial snapshot **before** running the HammerDB workload.
-
-**IMPORTANT**: When running HammerDB commands (build/run), execute them in background and continuously monitor container logs. Debezium may crash when encountering unknown tables - see `KNOWN_ISSUES.md` for details.
-
-### Step 1: Clean Up and Start Stack
-
-```bash
-docker compose down -v
-
-# Clean up output files from previous runs (runs as root to handle permission issues)
-docker compose --profile=clean run --rm clean
-
-# Start with full profile (OLR → Debezium → Kafka)
-docker compose --profile=full up -d
-```
-
-### Step 2: Wait for Oracle Setup to Complete
+### Step 1.3: Wait for Oracle Setup to Complete
 
 ```bash
 until docker compose exec oracle ls /opt/oracle/oradata/dbinit 2>/dev/null; do
@@ -44,7 +34,59 @@ done
 echo "Oracle setup complete"
 ```
 
-### Step 3: Wait for Debezium to Complete Snapshot and Start Streaming
+### Step 1.4: Build TPCC Schema
+
+See profile-specific instructions below for handling this step.
+
+### Step 1.5: Enable Supplemental Logging for TPCC Tables
+
+```bash
+docker compose exec -T oracle sqlplus -S / as sysdba < config/oracle/enable-tpcc-supplemental-logging.sql
+```
+
+---
+
+## Part 2: Running the Test (Profile-Specific)
+
+### Option A: OLR-Only Profile
+
+The `olr-only` profile is simpler - OLR writes CDC events directly to `./output/olr/events.json`.
+
+#### Step 2A.1: Build TPCC Schema
+
+```bash
+docker compose exec hammerdb /scripts/entrypoint.sh build
+```
+
+#### Step 2A.2: Restart OLR to Pick Up TPCC Tables
+
+```bash
+docker compose restart olr-file
+```
+
+#### Step 2A.3: Run HammerDB Workload
+
+**IMPORTANT: Run in background with `&` to allow parallel monitoring.**
+
+```bash
+docker compose exec hammerdb /scripts/entrypoint.sh run &
+
+# Monitor in parallel:
+docker compose logs -f olr-file              # Watch OLR logs
+tail -f ./output/olr/events.json             # Watch CDC events
+tail -f output/hammerdb/run_*.log            # Watch HammerDB output
+docker stats --no-stream | grep -E "oracle|olr"  # Resource usage
+```
+
+---
+
+### Option B: Full Profile (OLR → Debezium → Kafka)
+
+The `full` profile requires additional steps to handle Debezium snapshots.
+
+**IMPORTANT**: When running HammerDB commands (build/run), execute them in background and continuously monitor container logs. Debezium may crash when encountering unknown tables - see `KNOWN_ISSUES.md` for details.
+
+#### Step 2B.1: Wait for Debezium to Complete Initial Snapshot
 
 ```bash
 until docker compose logs dbz 2>&1 | grep -q "Starting streaming"; do
@@ -54,7 +96,7 @@ done
 echo "Debezium is streaming"
 ```
 
-### Step 4: Build TPCC Schema
+#### Step 2B.2: Build TPCC Schema
 
 **Note**: Stop Debezium first to avoid crashes on unknown tables, or run build in background and monitor.
 
@@ -71,13 +113,7 @@ docker compose logs -f dbz olr-dbz  # Watch for errors
 docker compose ps                   # Check container status
 ```
 
-### Step 5: Enable Supplemental Logging for TPCC Tables
-
-```bash
-docker compose exec -T oracle sqlplus -S / as sysdba < config/oracle/enable-tpcc-supplemental-logging.sql
-```
-
-### Step 6: Restart OLR and Debezium to Pick Up TPCC Tables
+#### Step 2B.3: Restart OLR and Debezium to Pick Up TPCC Tables
 
 ```bash
 # Record timestamp before restart
@@ -98,12 +134,11 @@ echo "Debezium is now streaming"
 docker compose logs olr-dbz --tail=5 2>&1 | grep -E "processing redo|ERROR"
 ```
 
-### Step 7: Run HammerDB Workload
+#### Step 2B.4: Run HammerDB Workload
 
-Run in background and monitor CDC pipeline:
+**IMPORTANT: Run in background with `&` to allow parallel monitoring.**
 
 ```bash
-# Start workload in background
 docker compose exec hammerdb /scripts/entrypoint.sh run &
 
 # Monitor in parallel (run these in separate terminals or check periodically):
@@ -116,7 +151,34 @@ ls -la output/hammerdb/
 tail -f output/hammerdb/run_*.log
 ```
 
-### Step 8: Monitor Throughput and Resources
+#### Why This Order Matters (Full Profile)
+
+| Step | Reason |
+|------|--------|
+| Start without HammerDB | Debezium snapshot requires stable DB connections; heavy load causes timeouts |
+| Wait for streaming | Snapshot must complete before workload, otherwise Debezium retries indefinitely |
+| Restart after TPCC | OLR and Debezium need to discover the new TPCC tables |
+
+---
+
+## Part 3: Collecting Metrics (Profile-Specific)
+
+### Monitoring During Test
+
+#### OLR-Only Profile
+
+```bash
+# OLR output (events written directly to file)
+tail -f ./output/olr/events.json
+
+# OLR logs
+docker compose logs -f olr-file
+
+# Container resource usage
+docker stats --no-stream | grep -E "oracle|olr"
+```
+
+#### Full Profile
 
 ```bash
 # Kafka consumer throughput (reported every 10 seconds)
@@ -132,37 +194,21 @@ docker stats --no-stream | grep -E "oracle|dbz|olr-dbz|kafka"
 curl -s "http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_total"
 ```
 
-### Why This Order Matters
+---
 
-| Step | Reason |
-|------|--------|
-| Start without HammerDB | Debezium snapshot requires stable DB connections; heavy load causes timeouts |
-| Wait for streaming | Snapshot must complete before workload, otherwise Debezium retries indefinitely |
-| Restart after TPCC | OLR and Debezium need to discover the new TPCC tables |
-
-### Expected Results (4 VUs, 10 warehouses, 5 min duration)
-
-| Metric | Value |
-|--------|-------|
-| Debezium Throughput | ~6,000 events/sec |
-| Oracle Peak CPU | ~160% (of 200% Free limit) |
-| OLR Memory | ~2 GiB |
-| Debezium Memory | ~630 MiB |
-
-## Performance Report Generation
+### Generating Performance Reports
 
 After running a HammerDB stress test, generate a performance report using the report generator script.
 
-### Prerequisites
+#### Prerequisites
 
 ```bash
 pip install -r scripts/report-generator/requirements.txt
 ```
 
-### Generate Report
+#### OLR-Only Profile Report
 
 ```bash
-# Note your test start and end times (UTC), then run:
 python3 scripts/report-generator/generate_report.py \
     --start "2025-12-20T20:12:00Z" \
     --end "2025-12-20T20:22:00Z" \
@@ -171,18 +217,26 @@ python3 scripts/report-generator/generate_report.py \
     --rate-of 'oracledb_dml_redo_entries' \
     --rate-of 'oracledb_dml_redo_bytes' \
     --total-of 'bytes_sent' \
-    --title "Performance Test - 60 VUs" \
+    --title "OLR-Only Performance Test" \
     --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
 ```
 
-The script queries Prometheus via `docker compose exec` and generates an HTML report with:
-- Summary table (min/avg/max/total for each metric)
-- CPU usage chart (per container)
-- Memory usage chart (per container)
-- Rate charts (events/sec over time)
-- Total charts (raw counter values over time)
+#### Full Profile Report
 
-### CLI Options
+```bash
+python3 scripts/report-generator/generate_report.py \
+    --start "2025-12-20T20:12:00Z" \
+    --end "2025-12-20T20:22:00Z" \
+    --containers oracle,olr,dbz,kafka \
+    --rate-of 'dml_ops{filter="out"}' \
+    --rate-of 'oracledb_dml_redo_entries' \
+    --rate-of 'oracledb_dml_redo_bytes' \
+    --total-of 'bytes_sent' \
+    --title "Full Pipeline Performance Test" \
+    --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
+```
+
+#### CLI Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
@@ -195,9 +249,20 @@ The script queries Prometheus via `docker compose exec` and generates an HTML re
 | `--output` | Output HTML file path | `reports/test/charts.html` |
 | `--step` | Query step in seconds (default: 30) | `60` |
 
-### Available Metrics
+The script queries Prometheus via `docker compose exec` and generates an HTML report with:
+- Summary table (min/avg/max/total for each metric)
+- CPU usage chart (per container)
+- Memory usage chart (per container)
+- Rate charts (events/sec over time)
+- Total charts (raw counter values over time)
 
-**OLR Metrics (use with `--rate-of` or `--total-of`):**
+---
+
+## Reference: Available Metrics
+
+### OLR Metrics
+
+Use with `--rate-of` or `--total-of`:
 
 | Metric | Description |
 |--------|-------------|
@@ -214,7 +279,7 @@ The script queries Prometheus via `docker compose exec` and generates an HTML re
 - `type`: `insert`, `update`, `delete`, `commit`, `rollback`
 - `table`: `CUSTOMER`, `ORDERS`, `STOCK`, etc.
 
-**Oracle Exporter Metrics (query via Prometheus):**
+### Oracle Exporter Metrics
 
 | Metric | Description |
 |--------|-------------|
@@ -238,31 +303,34 @@ rate(oracledb_dml_redo_bytes[1m]) / 1024
 rate(oracledb_activity_user_commits[1m])
 ```
 
-### Example: Detailed Report
+---
 
-```bash
-python3 scripts/report-generator/generate_report.py \
-    --start "2025-12-20T20:12:00Z" \
-    --end "2025-12-20T20:22:00Z" \
-    --containers oracle,olr \
-    --rate-of 'dml_ops{filter="out"}' \
-    --rate-of 'dml_ops{filter="out",type="insert"}' \
-    --rate-of 'dml_ops{filter="out",type="update"}' \
-    --total-of 'bytes_sent' \
-    --total-of 'bytes_parsed' \
-    --title "Performance Test - Detailed" \
-    --output reports/performance/detailed/charts.html
-```
+## Expected Results
 
-### Notes
+### OLR-Only (4 VUs, 10 warehouses, 5 min duration)
+
+| Metric | Value |
+|--------|-------|
+| Oracle Peak CPU | ~160% (of 200% Free limit) |
+| OLR Memory | ~2 GiB |
+
+### Full Profile (4 VUs, 10 warehouses, 5 min duration)
+
+| Metric | Value |
+|--------|-------|
+| Debezium Throughput | ~6,000 events/sec |
+| Oracle Peak CPU | ~160% (of 200% Free limit) |
+| OLR Memory | ~2 GiB |
+| Debezium Memory | ~630 MiB |
+
+---
+
+## Notes
 
 - **Do NOT count events.json lines** for throughput - use Prometheus metrics instead
 - **Oracle Free limits**: 2 cores (200% max CPU), 2 GB SGA
 - **OLR processes in bursts**: Throughput spikes when redo logs are archived
 
-## Getting HammerDB Job Metrics
+## See Also
 
-See [HOWTO_HAMMERDB.md](HOWTO_HAMMERDB.md) for details on:
-- Running HammerDB commands
-- Accessing the HammerDB web service
-- Retrieving job metrics via REST API
+- [HOWTO_HAMMERDB.md](HOWTO_HAMMERDB.md) - HammerDB commands, web service, REST API
