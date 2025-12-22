@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Performance Test - 60 VUs</title>
+    <title>OLR-Only Performance Test (4 warehouses)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -51,9 +51,9 @@
     </style>
 </head>
 <body>
-    <h1>Performance Test - 60 VUs</h1>
+    <h1>OLR-Only Performance Test (4 warehouses)</h1>
     <p class="meta">
-        Start: 2025-12-20 20:12:00 UTC | End: 2025-12-20 20:22:00 UTC | Duration: 10 min
+        Start: 2025-12-22 08:06:00 UTC | End: 2025-12-22 08:14:00 UTC | Duration: 8 min
     </p>
 
     
@@ -73,114 +73,66 @@
                 
                 <tr>
                     <td>oracle CPU</td>
-                    <td style="text-align: right;">3.0%</td>
-                    <td style="text-align: right;">20.8%</td>
-                    <td style="text-align: right;">34.6%</td>
-                    <td style="text-align: right;">-</td>
-                </tr>
-                
-                <tr>
-                    <td>olr CPU</td>
-                    <td style="text-align: right;">0.35%</td>
-                    <td style="text-align: right;">2.1%</td>
-                    <td style="text-align: right;">14.1%</td>
+                    <td style="text-align: right;">3.9%</td>
+                    <td style="text-align: right;">104%</td>
+                    <td style="text-align: right;">205%</td>
                     <td style="text-align: right;">-</td>
                 </tr>
                 
                 <tr>
                     <td>oracle Memory</td>
-                    <td style="text-align: right;">5.2K MB</td>
-                    <td style="text-align: right;">7.6K MB</td>
-                    <td style="text-align: right;">7.9K MB</td>
-                    <td style="text-align: right;">-</td>
-                </tr>
-                
-                <tr>
-                    <td>olr Memory</td>
-                    <td style="text-align: right;">657 MB</td>
-                    <td style="text-align: right;">1.2K MB</td>
-                    <td style="text-align: right;">5.0K MB</td>
+                    <td style="text-align: right;">4.9K MB</td>
+                    <td style="text-align: right;">7.2K MB</td>
+                    <td style="text-align: right;">8.2K MB</td>
                     <td style="text-align: right;">-</td>
                 </tr>
                 
                 <tr>
                     <td>oracle Net RX</td>
-                    <td style="text-align: right;">20.4 B/s</td>
-                    <td style="text-align: right;">10.1K B/s</td>
-                    <td style="text-align: right;">32.9K B/s</td>
-                    <td style="text-align: right;">~6.0M B</td>
-                </tr>
-                
-                <tr>
-                    <td>olr Net RX</td>
-                    <td style="text-align: right;">142 B/s</td>
-                    <td style="text-align: right;">151 B/s</td>
-                    <td style="text-align: right;">159 B/s</td>
-                    <td style="text-align: right;">~90.9K B</td>
+                    <td style="text-align: right;">2.2K B/s</td>
+                    <td style="text-align: right;">76.2K B/s</td>
+                    <td style="text-align: right;">141.3K B/s</td>
+                    <td style="text-align: right;">~36.6M B</td>
                 </tr>
                 
                 <tr>
                     <td>oracle Net TX</td>
-                    <td style="text-align: right;">54.5 B/s</td>
-                    <td style="text-align: right;">31.3K B/s</td>
-                    <td style="text-align: right;">58.4K B/s</td>
-                    <td style="text-align: right;">~18.8M B</td>
-                </tr>
-                
-                <tr>
-                    <td>olr Net TX</td>
-                    <td style="text-align: right;">857 B/s</td>
-                    <td style="text-align: right;">909 B/s</td>
-                    <td style="text-align: right;">949 B/s</td>
-                    <td style="text-align: right;">~545.7K B</td>
+                    <td style="text-align: right;">7.9K B/s</td>
+                    <td style="text-align: right;">255.0K B/s</td>
+                    <td style="text-align: right;">470.7K B/s</td>
+                    <td style="text-align: right;">~122.4M B</td>
                 </tr>
                 
                 <tr>
                     <td>oracle FS Read</td>
-                    <td style="text-align: right;">661 B/s</td>
-                    <td style="text-align: right;">240.2K B/s</td>
-                    <td style="text-align: right;">1.6M B/s</td>
-                    <td style="text-align: right;">~144.1M B</td>
-                </tr>
-                
-                <tr>
-                    <td>olr FS Read</td>
-                    <td style="text-align: right;">34.9K B/s</td>
-                    <td style="text-align: right;">20.8M B/s</td>
-                    <td style="text-align: right;">395.8M B/s</td>
-                    <td style="text-align: right;">~12,501.9M B</td>
+                    <td style="text-align: right;">163 B/s</td>
+                    <td style="text-align: right;">312.2K B/s</td>
+                    <td style="text-align: right;">1.1M B/s</td>
+                    <td style="text-align: right;">~149.9M B</td>
                 </tr>
                 
                 <tr>
                     <td>oracle FS Write</td>
-                    <td style="text-align: right;">160.8K B/s</td>
-                    <td style="text-align: right;">10.3M B/s</td>
-                    <td style="text-align: right;">19.5M B/s</td>
-                    <td style="text-align: right;">~6,174.6M B</td>
-                </tr>
-                
-                <tr>
-                    <td>olr FS Write</td>
-                    <td style="text-align: right;">355.6K B/s</td>
-                    <td style="text-align: right;">1.2M B/s</td>
-                    <td style="text-align: right;">2.1M B/s</td>
-                    <td style="text-align: right;">~692.4M B</td>
+                    <td style="text-align: right;">327.0K B/s</td>
+                    <td style="text-align: right;">21.2M B/s</td>
+                    <td style="text-align: right;">45.5M B/s</td>
+                    <td style="text-align: right;">~10,198.2M B</td>
                 </tr>
                 
                 <tr>
                     <td>dml_ops{filter="out"}</td>
-                    <td style="text-align: right;">0.10/s</td>
-                    <td style="text-align: right;">563/s</td>
-                    <td style="text-align: right;">1.1K/s</td>
-                    <td style="text-align: right;">~337.7K</td>
+                    <td style="text-align: right;">591/s</td>
+                    <td style="text-align: right;">2.3K/s</td>
+                    <td style="text-align: right;">4.2K/s</td>
+                    <td style="text-align: right;">~1.1M</td>
                 </tr>
                 
                 <tr>
                     <td>bytes_sent</td>
-                    <td style="text-align: right;">617.9M</td>
-                    <td style="text-align: right;">959.7M</td>
-                    <td style="text-align: right;">1,292.0M</td>
-                    <td style="text-align: right;">+674.1M</td>
+                    <td style="text-align: right;">31.0M</td>
+                    <td style="text-align: right;">1,062.1M</td>
+                    <td style="text-align: right;">2,046.1M</td>
+                    <td style="text-align: right;">+2,015.1M</td>
                 </tr>
                 
             </tbody>
@@ -279,7 +231,7 @@
             { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
         ];
 
-        const timeLabels = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"];
+        const timeLabels = ["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00"];
 
         
         // CPU Chart
@@ -291,18 +243,9 @@
                     
                     {
                         label: 'oracle CPU %',
-                        data: [5.85, 12.18, 33.9, 15.42, 25.05, 21.73, 15.89, 34.58, 26.15, 10.15, 23.06, 24.07, 19.02, 34.61, 16.14, 23.55, 25.42, 22.7, 21.66, 23.13, 3.04],
+                        data: [3.85, 46.19, 161.03, 101.05, 158.92, 165.8, 204.88, 140.64, 168.11, 109.96, 93.03, 78.48, 111.5, 68.97, 112.51, 6.67, 30.25],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr CPU %',
-                        data: [0.42, 1.06, 2.12, 1.07, 1.79, 1.86, 0.99, 2.39, 1.59, 0.35, 1.74, 1.85, 1.0, 2.4, 1.06, 1.65, 1.85, 1.09, 2.19, 1.74, 14.12],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -333,18 +276,9 @@
                     
                     {
                         label: 'oracle Memory (MB)',
-                        data: [7728.5, 7721.8, 7848.6, 7860.9, 7838.7, 7872.7, 7802.2, 7829.7, 7837.8, 7824.1, 7772.6, 7801.8, 7795.9, 7808.4, 7848.2, 7833.0, 7759.6, 7682.6, 7683.3, 7034.4, 5238.6],
+                        data: [4920.7, 5109.4, 5335.9, 5997.9, 6164.9, 6795.5, 6924.8, 7571.5, 7805.2, 8188.2, 8191.8, 8186.1, 8190.4, 8186.0, 8189.1, 8176.1, 8188.8],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr Memory (MB)',
-                        data: [657.4, 664.0, 721.4, 749.0, 793.5, 846.9, 863.2, 897.3, 945.5, 962.6, 1013.9, 1048.1, 1082.5, 1131.7, 1149.0, 1197.4, 1251.3, 1269.1, 1322.9, 1356.2, 4996.2],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -375,18 +309,9 @@
                     
                     {
                         label: 'oracle RX (B/s)',
-                        data: [20.4, 10169.5, 32947.3, 5941.4, 13121.4, 10384.6, 5011.6, 14104.5, 9368.8, 130.0, 9971.7, 10543.1, 5121.8, 14067.3, 4903.9, 9394.0, 14004.0, 10578.7, 10463.0, 10977.5, 0.0],
+                        data: [0.0, 34095.9, 131974.8, 59346.4, 129231.8, 115773.0, 89843.9, 110430.7, 141300.5, 85026.5, 60974.0, 60194.3, 81044.1, 47061.0, 69233.6, 2257.7, 2200.9],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr RX (B/s)',
-                        data: [153.9, 157.3, 148.8, 148.5, 153.0, 147.3, 155.6, 157.5, 142.2, 154.0, 149.2, 153.0, 150.0, 149.4, 155.5, 150.6, 147.7, 159.3, 154.2, 144.5, 149.3],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -417,18 +342,9 @@
                     
                     {
                         label: 'oracle TX (B/s)',
-                        data: [54.5, 20776.0, 58433.6, 19089.7, 46249.0, 36033.5, 17440.6, 49944.2, 33835.4, 117.8, 35004.5, 35162.8, 17986.3, 49905.8, 16900.4, 33393.5, 48945.6, 36269.8, 36756.4, 33941.4, 0.0],
+                        data: [0.0, 99609.5, 441403.5, 200639.7, 431388.4, 387701.8, 303606.2, 370278.4, 470733.0, 285657.8, 205239.0, 203229.1, 272322.0, 158787.7, 234200.1, 8023.5, 7937.3],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr TX (B/s)',
-                        data: [926.6, 916.7, 896.6, 894.9, 922.0, 887.8, 923.8, 949.1, 856.8, 927.9, 898.8, 922.2, 904.3, 901.0, 937.6, 908.3, 890.8, 946.5, 929.6, 871.0, 887.1],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -459,18 +375,9 @@
                     
                     {
                         label: 'oracle Read (B/s)',
-                        data: [6798.1, 324435.6, 308227.7, 264258.1, 214043.5, 206078.1, 99586.8, 537196.5, 163164.6, 490406.3, 82372.7, 119393.4, 1582992.0, 146685.7, 180536.3, 59583.1, 105752.5, 67329.8, 35279.7, 49452.0, 660.9],
+                        data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 163.3, 0.0, 44646.6, 316238.2, 429706.6, 1126758.3, 345186.7, 520614.9, 13703.8, 12865.7],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr Read (B/s)',
-                        data: [90356.7, 1487348.2, 3355611.2, 1250344.6, 2424694.2, 2632416.7, 1366017.0, 3891769.3, 2241321.4, 34913.4, 2401668.2, 2673687.0, 1301562.7, 3795292.8, 1267947.4, 2310556.7, 2752573.8, 1361719.9, 2555314.4, 2571589.6, 395799481.8],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -501,18 +408,9 @@
                     
                     {
                         label: 'oracle Write (B/s)',
-                        data: [3733153.6, 2706302.6, 19124877.4, 5091054.2, 12868560.8, 11546881.0, 6649550.6, 17465621.3, 13602010.0, 3517509.4, 13467470.7, 11612459.3, 6340154.8, 15888896.5, 5938472.8, 19472276.5, 13905185.8, 8909610.3, 9123836.0, 14985917.0, 160760.3],
+                        data: [4662703.4, 4950369.3, 31105757.7, 35706078.3, 26171471.2, 40791181.5, 23846330.1, 45495002.9, 29245943.1, 35809305.5, 15667364.6, 17126877.0, 24317068.7, 13249834.1, 12015968.4, 326957.7, 696630.7],
                         borderColor: colors[0 % colors.length].border,
                         backgroundColor: colors[0 % colors.length].bg,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    
-                    {
-                        label: 'olr Write (B/s)',
-                        data: [719146.3, 685583.7, 1338217.9, 355579.8, 1386449.3, 649531.2, 1009601.0, 1753752.6, 1999328.9, 780576.0, 791230.0, 2105901.4, 1358488.0, 1326548.2, 387726.5, 1260371.1, 1423141.2, 1419092.0, 1825622.6, 1018462.3, 640055.2],
-                        borderColor: colors[1 % colors.length].border,
-                        backgroundColor: colors[1 % colors.length].bg,
                         fill: true,
                         tension: 0.3
                     }
@@ -541,7 +439,7 @@
                 labels: timeLabels,
                 datasets: [{
                     label: 'dml_ops{filter="out"} (events/sec)',
-                    data: [2.0, 346.2, 1024.2, 355.9, 533.2, 672.8, 327.3, 1101.6, 658.1, 301.0, 685.1, 692.9, 335.6, 1002.1, 330.3, 624.3, 692.6, 731.0, 724.1, 679.7, 0.1],
+                    data: [4167.5, 590.7, 2399.2, 2422.2, 2416.1, 2367.0, 1435.2, 2383.3, 2337.8, 2402.8, 2253.3, 2513.4, 2411.7, 2466.2, 2390.2, 2225.3, 2167.8],
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37, 99, 235, 0.2)',
                     fill: true,
@@ -570,7 +468,7 @@
                 labels: timeLabels,
                 datasets: [{
                     label: 'bytes_sent',
-                    data: [617872358.0, 634633778.0, 683076588.0, 700988351.0, 742574952.0, 783047303.0, 799020005.0, 851838874.0, 891572432.0, 922771897.0, 957235958.0, 990883468.0, 1024589077.0, 1072787191.0, 1089330890.0, 1136195565.0, 1188148028.0, 1223758218.0, 1258858717.0, 1291917859.0, 1291963001.0],
+                    data: [1372755918.0, 30970708.0, 171072466.0, 312261860.0, 454355169.0, 592414118.0, 685492163.0, 823590182.0, 959031346.0, 1097167236.0, 1232207412.0, 1378326992.0, 1517422192.0, 1661066417.0, 1800125893.0, 1921069931.0, 2046069004.0],
                     borderColor: '#059669',
                     backgroundColor: 'rgba(5, 150, 105, 0.2)',
                     fill: true,
