@@ -11,6 +11,8 @@ This guide covers how to run HammerDB stress tests and generate performance repo
 | `make up-full` | Start full pipeline (OLR → Debezium → Kafka) |
 | `make down` | Stop all containers (preserves volumes) |
 | `make clean` | Clean output files and remove everything including volumes |
+| `make run-bench` | Run HammerDB benchmark with timestamp tracking |
+| `make report` | Generate performance report from last benchmark run |
 
 ## Part 1: Setup (Common Steps)
 
@@ -73,15 +75,23 @@ docker compose restart olr-file
 
 #### Step 2A.3: Run HammerDB Workload
 
-**IMPORTANT: Run in background with `&` to allow parallel monitoring.**
+**Run the benchmark in background to allow parallel monitoring:**
 
 ```bash
-docker compose exec hammerdb /scripts/entrypoint.sh run &
+make run-bench &
+```
 
-# Monitor in parallel:
+This script automatically:
+- Records start/end timestamps to `output/hammerdb/RUN_START_TIME.txt` and `RUN_END_TIME.txt`
+- Creates a timestamped log file `output/hammerdb/RUN_LOG_<timestamp>.txt`
+- Pipes HammerDB output to both console and log file
+
+**Monitor in parallel:**
+
+```bash
 docker compose logs -f olr-file              # Watch OLR logs
 tail -f ./output/olr/events.json             # Watch CDC events
-tail -f output/hammerdb/run_*.log            # Watch HammerDB output
+tail -f output/hammerdb/RUN_LOG_*.txt        # Watch HammerDB output
 docker stats --no-stream | grep -E "oracle|olr"  # Resource usage
 ```
 
@@ -143,19 +153,24 @@ docker compose logs olr-dbz --tail=5 2>&1 | grep -E "processing redo|ERROR"
 
 #### Step 2B.4: Run HammerDB Workload
 
-**IMPORTANT: Run in background with `&` to allow parallel monitoring.**
+**Run the benchmark in background to allow parallel monitoring:**
 
 ```bash
-docker compose exec hammerdb /scripts/entrypoint.sh run &
+make run-bench &
+```
 
-# Monitor in parallel (run these in separate terminals or check periodically):
-docker compose logs -f dbz olr-dbz                          # Watch CDC logs
+This script automatically:
+- Records start/end timestamps to `output/hammerdb/RUN_START_TIME.txt` and `RUN_END_TIME.txt`
+- Creates a timestamped log file `output/hammerdb/RUN_LOG_<timestamp>.txt`
+- Pipes HammerDB output to both console and log file
+
+**Monitor in parallel:**
+
+```bash
+docker compose logs -f dbz olr-dbz                              # Watch CDC logs
 docker compose logs kafka-consumer --tail=10 | grep Throughput  # Check throughput
-docker compose ps                                           # Check status
-
-# Check HammerDB output logs
-ls -la output/hammerdb/
-tail -f output/hammerdb/run_*.log
+docker compose ps                                               # Check status
+tail -f output/hammerdb/RUN_LOG_*.txt                           # Watch HammerDB output
 ```
 
 #### Why This Order Matters (Full Profile)
@@ -205,7 +220,16 @@ curl -s "http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_to
 
 ### Generating Performance Reports
 
-After running a HammerDB stress test, generate a performance report using the report generator script.
+After running a HammerDB stress test with `make run-bench`, generate a performance report:
+
+```bash
+make report
+```
+
+This automatically:
+- Reads timestamps from `output/hammerdb/RUN_START_TIME.txt` and `RUN_END_TIME.txt`
+- Detects the active profile (olr-only or full) and selects appropriate containers
+- Generates an HTML report in `reports/performance/<timestamp>/charts.html`
 
 #### Prerequisites
 
@@ -213,22 +237,9 @@ After running a HammerDB stress test, generate a performance report using the re
 pip install -r scripts/report-generator/requirements.txt
 ```
 
-#### OLR-Only Profile Report
+#### Manual Report Generation
 
-```bash
-python3 scripts/report-generator/generate_report.py \
-    --start "2025-12-20T20:12:00Z" \
-    --end "2025-12-20T20:22:00Z" \
-    --containers oracle,olr \
-    --rate-of 'dml_ops{filter="out"}' \
-    --rate-of 'oracledb_dml_redo_entries' \
-    --rate-of 'oracledb_dml_redo_bytes' \
-    --total-of 'bytes_sent' \
-    --title "OLR-Only Performance Test" \
-    --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
-```
-
-#### Full Profile Report
+For custom time ranges or options, use the script directly:
 
 ```bash
 python3 scripts/report-generator/generate_report.py \
@@ -239,7 +250,7 @@ python3 scripts/report-generator/generate_report.py \
     --rate-of 'oracledb_dml_redo_entries' \
     --rate-of 'oracledb_dml_redo_bytes' \
     --total-of 'bytes_sent' \
-    --title "Full Pipeline Performance Test" \
+    --title "Custom Performance Test" \
     --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
 ```
 
