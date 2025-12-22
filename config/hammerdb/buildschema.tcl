@@ -9,8 +9,9 @@ diset connection system_user $::env(ORACLE_USER)
 diset connection system_password $::env(ORACLE_PASSWORD)
 diset connection instance $::env(ORACLE_INSTANCE)
 
+set warehouse 4
 set vu [ numberOfCPUs ]
-set warehouse [ expr {$vu * 5} ]
+if { $vu > $warehouse } { set vu $warehouse }
 diset tpcc count_ware $warehouse
 diset tpcc num_vu $vu
 diset tpcc tpcc_user tpcc
