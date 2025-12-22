@@ -156,3 +156,28 @@ from gv$sysmetric
 where group_id=2 and metric_id in (2000,2050,2112,2110)
 '''
 ignorezeroresult = true
+
+[[metric]]
+context = "dml"
+labels = [ "inst_id" ]
+metricsdesc = { value="DML row operation counters from gv$sysstat." }
+metricstype = { value = "counter" }
+fieldtoappend = "name"
+request = '''
+select inst_id,
+       case name
+           when 'db block changes' then 'block_changes'
+           when 'redo entries' then 'redo_entries'
+           when 'redo size' then 'redo_bytes'
+           when 'table scan rows gotten' then 'rows_scanned'
+           else replace(lower(name), ' ', '_')
+       end as name,
+       value
+from gv$sysstat
+where name in (
+    'db block changes',
+    'redo entries',
+    'redo size',
+    'table scan rows gotten'
+)
+'''

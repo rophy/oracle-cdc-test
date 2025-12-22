@@ -80,6 +80,7 @@ services:
   # Oracle database metrics exporter
   oracle-exporter:
     image: container-registry.oracle.com/database/observability-exporter:2.2.0
+    restart: on-failure
     depends_on:
       oracle:
         condition: service_healthy
@@ -105,7 +106,7 @@ services:
       - ORACLE_USER=system
       - ORACLE_PASSWORD=${ORACLE_PASSWORD:-OraclePwd123}
       - ORACLE_INSTANCE=oracle:1521/FREEPDB1
-      - HAMMERDB_VUS=4
+      - HAMMERDB_VUS=${HAMMERDB_VUS:-8}
     volumes:
       - ./config/hammerdb:/scripts
       - ./output/hammerdb:/tmp

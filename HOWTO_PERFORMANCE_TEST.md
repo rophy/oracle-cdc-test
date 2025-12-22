@@ -168,6 +168,8 @@ python3 scripts/report-generator/generate_report.py \
     --end "2025-12-20T20:22:00Z" \
     --containers oracle,olr \
     --rate-of 'dml_ops{filter="out"}' \
+    --rate-of 'oracledb_dml_redo_entries' \
+    --rate-of 'oracledb_dml_redo_bytes' \
     --total-of 'bytes_sent' \
     --title "Performance Test - 60 VUs" \
     --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
@@ -211,6 +213,30 @@ The script queries Prometheus via `docker compose exec` and generates an HTML re
 - `filter`: `out`, `skip`, `partial`
 - `type`: `insert`, `update`, `delete`, `commit`, `rollback`
 - `table`: `CUSTOMER`, `ORDERS`, `STOCK`, etc.
+
+**Oracle Exporter Metrics (query via Prometheus):**
+
+| Metric | Description |
+|--------|-------------|
+| `oracledb_dml_redo_entries` | Redo log entries (counter, correlates with DML ops) |
+| `oracledb_dml_redo_bytes` | Total redo data generated (counter, bytes) |
+| `oracledb_dml_block_changes` | Database block modifications (counter) |
+| `oracledb_dml_rows_scanned` | Rows read by table scans (counter) |
+| `oracledb_activity_user_commits` | Commit count (counter) |
+| `oracledb_activity_execute_count` | SQL executions (counter) |
+| `oracledb_wait_time_*` | Wait time by class (user_io, commit, concurrency, etc.) |
+
+**Example Prometheus queries:**
+```bash
+# Redo entries per second (proxy for DML rate)
+rate(oracledb_dml_redo_entries[1m])
+
+# Redo throughput in KB/sec
+rate(oracledb_dml_redo_bytes[1m]) / 1024
+
+# Commits per second
+rate(oracledb_activity_user_commits[1m])
+```
 
 ### Example: Detailed Report
 
