@@ -2,6 +2,16 @@
 
 This guide covers how to run HammerDB stress tests and generate performance reports.
 
+## Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make up` | Start base stack (Oracle + monitoring) |
+| `make up-olr` | Start with OLR direct to file |
+| `make up-full` | Start full pipeline (OLR → Debezium → Kafka) |
+| `make down` | Stop all containers (preserves volumes) |
+| `make clean` | Clean output files and remove everything including volumes |
+
 ## Part 1: Setup (Common Steps)
 
 These steps are the same regardless of which CDC profile you choose.
@@ -9,10 +19,7 @@ These steps are the same regardless of which CDC profile you choose.
 ### Step 1.1: Clean Up Previous Run
 
 ```bash
-docker compose down -v
-
-# Clean up output files from previous runs (runs as root to handle permission issues)
-docker compose --profile=clean run --rm clean
+make clean
 ```
 
 ### Step 1.2: Start the Stack
@@ -21,8 +28,8 @@ Choose your CDC profile:
 
 | Profile | Command | Description |
 |---------|---------|-------------|
-| `olr-only` | `docker compose --profile=olr-only up -d` | OLR writes directly to file (lightweight) |
-| `full` | `docker compose --profile=full up -d` | Full pipeline: OLR → Debezium → Kafka |
+| `olr-only` | `make up-olr` | OLR writes directly to file (lightweight) |
+| `full` | `make up-full` | Full pipeline: OLR → Debezium → Kafka |
 
 ### Step 1.3: Wait for Oracle Setup to Complete
 
