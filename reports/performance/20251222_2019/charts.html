@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Pipeline Performance Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Full Pipeline Performance Test</h1>
+    <p class="meta">
+        Start: 2025-12-22 12:11:28 UTC | End: 2025-12-22 12:19:25 UTC | Duration: 7 min
+    </p>
+
+    
+    
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>oracle CPU</td>
+                    <td style="text-align: right;">5.4%</td>
+                    <td style="text-align: right;">166%</td>
+                    <td style="text-align: right;">225%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>dbz CPU</td>
+                    <td style="text-align: right;">1.9%</td>
+                    <td style="text-align: right;">72.4%</td>
+                    <td style="text-align: right;">165%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka CPU</td>
+                    <td style="text-align: right;">33.5%</td>
+                    <td style="text-align: right;">69.6%</td>
+                    <td style="text-align: right;">103%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Memory</td>
+                    <td style="text-align: right;">5.1K MB</td>
+                    <td style="text-align: right;">7.2K MB</td>
+                    <td style="text-align: right;">8.2K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>dbz Memory</td>
+                    <td style="text-align: right;">2.1K MB</td>
+                    <td style="text-align: right;">2.4K MB</td>
+                    <td style="text-align: right;">3.6K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka Memory</td>
+                    <td style="text-align: right;">1.6K MB</td>
+                    <td style="text-align: right;">4.2K MB</td>
+                    <td style="text-align: right;">5.4K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Net RX</td>
+                    <td style="text-align: right;">3.5K B/s</td>
+                    <td style="text-align: right;">75.7K B/s</td>
+                    <td style="text-align: right;">148.6K B/s</td>
+                    <td style="text-align: right;">~36.1M B</td>
+                </tr>
+                
+                <tr>
+                    <td>dbz Net RX</td>
+                    <td style="text-align: right;">1.1K B/s</td>
+                    <td style="text-align: right;">525.3K B/s</td>
+                    <td style="text-align: right;">1.7M B/s</td>
+                    <td style="text-align: right;">~250.6M B</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka Net RX</td>
+                    <td style="text-align: right;">11.2K B/s</td>
+                    <td style="text-align: right;">9.2M B/s</td>
+                    <td style="text-align: right;">20.7M B/s</td>
+                    <td style="text-align: right;">~4,376.5M B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Net TX</td>
+                    <td style="text-align: right;">145.9K B/s</td>
+                    <td style="text-align: right;">677.8K B/s</td>
+                    <td style="text-align: right;">1.7M B/s</td>
+                    <td style="text-align: right;">~323.3M B</td>
+                </tr>
+                
+                <tr>
+                    <td>dbz Net TX</td>
+                    <td style="text-align: right;">4.4K B/s</td>
+                    <td style="text-align: right;">9.2M B/s</td>
+                    <td style="text-align: right;">20.6M B/s</td>
+                    <td style="text-align: right;">~4,376.3M B</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka Net TX</td>
+                    <td style="text-align: right;">28.9K B/s</td>
+                    <td style="text-align: right;">3.8M B/s</td>
+                    <td style="text-align: right;">10.2M B/s</td>
+                    <td style="text-align: right;">~1,815.4M B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle FS Read</td>
+                    <td style="text-align: right;">167 B/s</td>
+                    <td style="text-align: right;">303.2K B/s</td>
+                    <td style="text-align: right;">1.2M B/s</td>
+                    <td style="text-align: right;">~144.6M B</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka FS Read</td>
+                    <td style="text-align: right;">1.6K B/s</td>
+                    <td style="text-align: right;">1.8M B/s</td>
+                    <td style="text-align: right;">5.1M B/s</td>
+                    <td style="text-align: right;">~873.1M B</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle FS Write</td>
+                    <td style="text-align: right;">7.1K B/s</td>
+                    <td style="text-align: right;">23.0M B/s</td>
+                    <td style="text-align: right;">45.1M B/s</td>
+                    <td style="text-align: right;">~10,963.2M B</td>
+                </tr>
+                
+                <tr>
+                    <td>dbz FS Write</td>
+                    <td style="text-align: right;">327 B/s</td>
+                    <td style="text-align: right;">845 B/s</td>
+                    <td style="text-align: right;">3.1K B/s</td>
+                    <td style="text-align: right;">~403.1K B</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka FS Write</td>
+                    <td style="text-align: right;">12.9K B/s</td>
+                    <td style="text-align: right;">8.2M B/s</td>
+                    <td style="text-align: right;">23.0M B/s</td>
+                    <td style="text-align: right;">~3,889.9M B</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    
+    
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Network Receive (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netRxChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Network Transmit (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="netTxChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Filesystem Read (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsReadChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Filesystem Write (bytes/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="fsWriteChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    
+    
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = ["11:28", "11:58", "12:28", "12:58", "13:28", "13:58", "14:28", "14:58", "15:28", "15:58", "16:28", "16:58", "17:28", "17:58", "18:28", "18:58"];
+
+        
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle CPU %',
+                        data: [5.44, 195.53, 141.06, 141.04, 171.8, 212.97, 208.38, 213.19, 88.58, 138.74, 147.52, 165.35, 171.35, 214.12, 224.64, 218.81],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz CPU %',
+                        data: [164.6, 88.72, 91.44, 77.29, 93.54, 100.03, 89.34, 84.76, 28.51, 69.31, 77.97, 69.9, 111.3, 6.29, 3.73, 1.87],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka CPU %',
+                        data: [102.7, 87.82, 82.69, 81.4, 78.43, 86.04, 83.74, 87.08, 62.89, 78.02, 77.46, 51.1, 33.5, 36.14, 45.02, 40.22],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Memory (MB)',
+                        data: [5053.4, 5459.0, 5632.7, 6293.4, 6996.9, 7243.4, 7808.0, 7948.9, 8032.1, 8191.0, 8190.6, 8076.9, 8190.0, 8191.5, 7067.6, 7074.1],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz Memory (MB)',
+                        data: [3645.6, 3436.9, 2515.0, 2063.8, 2064.6, 2065.1, 2065.5, 2065.9, 2066.0, 2066.3, 2066.3, 2148.6, 2388.5, 2392.1, 2396.5, 2398.0],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka Memory (MB)',
+                        data: [1639.1, 2139.1, 2635.6, 3084.9, 3582.7, 4226.2, 4496.9, 4836.6, 4924.1, 5115.7, 5351.2, 5429.4, 5445.8, 5428.1, 4114.9, 4034.8],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Network RX Chart
+        new Chart(document.getElementById('netRxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle RX (B/s)',
+                        data: [3534.9, 120323.6, 107896.0, 105084.6, 130411.1, 148594.6, 72701.0, 101312.3, 28975.5, 51080.2, 59589.5, 35213.6, 55482.9, 43727.0, 52514.1, 94429.8],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz RX (B/s)',
+                        data: [918578.1, 482796.5, 508895.3, 439607.8, 527032.1, 558754.0, 284714.7, 519736.8, 511697.9, 1455723.5, 1653768.4, 536770.8, 2217.6, 2492.8, 1384.4, 1102.2],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka RX (B/s)',
+                        data: [20693221.8, 15677810.7, 17550299.4, 14654903.0, 18037649.5, 18815852.8, 9903735.3, 9982457.2, 2634459.6, 7193070.3, 8500038.4, 3103199.5, 12852.9, 13132.0, 11232.9, 17459.0],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Network TX Chart
+        new Chart(document.getElementById('netTxChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle TX (B/s)',
+                        data: [702687.6, 683337.6, 707918.7, 640464.8, 782956.3, 871147.8, 428923.6, 742303.9, 623359.4, 1501714.5, 1745788.3, 590930.6, 184599.1, 145878.9, 177237.3, 314797.6],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz TX (B/s)',
+                        data: [20573638.3, 15758682.7, 17491896.7, 14559965.4, 17894061.5, 18880377.8, 9886884.3, 9978253.3, 2652605.6, 7210410.3, 8639629.9, 3243420.2, 4408.1, 7374.4, 6516.5, 6190.7],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka TX (B/s)',
+                        data: [1473671.1, 7977265.4, 8226996.8, 8712554.0, 581504.1, 186363.0, 101329.6, 102638.7, 28911.0, 71297.7, 676463.9, 5438997.3, 5859229.8, 6168277.2, 5117560.3, 10171668.5],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Filesystem Read Chart
+        new Chart(document.getElementById('fsReadChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Read (B/s)',
+                        data: [0.0, 38336.9, 0.0, 2670.5, 329.7, 168.3, 0.0, 0.0, 167.0, 198089.7, 420223.4, 334726.9, 484252.9, 449018.5, 554730.0, 1156266.1],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz Read (B/s)',
+                        data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka Read (B/s)',
+                        data: [0.0, 1638.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 349164.5, 5140370.6],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Filesystem Write Chart
+        new Chart(document.getElementById('fsWriteChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Write (B/s)',
+                        data: [7063.2, 23383687.4, 27955665.1, 40783749.0, 45144187.0, 37922535.8, 34968586.3, 18939324.7, 16464143.5, 30359394.2, 15956200.4, 16302351.0, 10304028.6, 22723636.9, 7541173.8, 18981348.5],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'dbz Write (B/s)',
+                        data: [990.4, 958.5, 994.8, 332.4, 346.0, 327.2, 489.8, 503.8, 328.2, 476.1, 497.6, 1010.7, 3147.7, 1962.5, 667.7, 488.6],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka Write (B/s)',
+                        data: [9212091.8, 22958373.3, 20749981.2, 16907537.6, 13391002.8, 9973027.4, 5693229.1, 9178351.1, 1019713.1, 5818116.4, 8663586.6, 6851057.8, 12911.0, 16988.4, 17101.3, 15830.9],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Bytes/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+
+        
+    </script>
+</body>
+</html>
