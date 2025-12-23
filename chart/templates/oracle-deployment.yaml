@@ -60,18 +60,18 @@ spec:
                 - /bin/bash
                 - -c
                 - echo 'SELECT 1 FROM DUAL;' | sqlplus -S c##dbzuser/dbzpwd@//localhost:1521/FREE | grep -q 1
-            initialDelaySeconds: 180
-            periodSeconds: 30
+            initialDelaySeconds: 30
+            periodSeconds: 10
             timeoutSeconds: 10
-            failureThreshold: 20
+            failureThreshold: 30
           livenessProbe:
             exec:
               command:
                 - /bin/bash
                 - -c
                 - echo 'SELECT 1 FROM DUAL;' | sqlplus -S / as sysdba | grep -q 1
-            initialDelaySeconds: 300
-            periodSeconds: 60
+            initialDelaySeconds: 60
+            periodSeconds: 30
             timeoutSeconds: 10
       volumes:
         - name: oradata

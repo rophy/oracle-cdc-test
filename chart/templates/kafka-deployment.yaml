@@ -64,7 +64,7 @@ spec:
                 - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --list
             initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 10
             failureThreshold: 5
           livenessProbe:
             exec:
@@ -74,7 +74,7 @@ spec:
                 - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --list
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 15
       volumes:
         - name: data
           {{- if .Values.kafka.persistence.enabled }}

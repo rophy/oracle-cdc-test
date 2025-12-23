@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-oracle-exporter
+  labels:
+    app: {{ .Release.Name }}-oracle-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-oracle-exporter
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-oracle-exporter
+    spec:
+      initContainers:
+        # Wait for Oracle to be ready
+        - name: wait-for-oracle
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-oracle 1521; do echo waiting for oracle; sleep 5; done']
+      containers:
+        - name: oracle-exporter
+          image: "{{ .Values.metrics.oracleExporter.image.repository }}:{{ .Values.metrics.oracleExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.oracleExporter.image.pullPolicy }}
+          args:
+            - --config.file=/exporter/config.yaml
+          ports:
+            - containerPort: 9161
+              name: metrics
+          resources:
+            {{- toYaml .Values.metrics.oracleExporter.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /exporter
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-oracle-exporter-config

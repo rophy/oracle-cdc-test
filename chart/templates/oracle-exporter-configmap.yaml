@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-oracle-exporter-config
+  labels:
+    app: {{ .Release.Name }}-oracle-exporter
+data:
+  config.yaml: |
+    databases:
+      default:
+        url: {{ .Release.Name }}-oracle:1521/FREE
+        username: c##dbzuser
+        password: dbzpwd
+        queryTimeout: 5
+        maxOpenConns: 5
+        maxIdleConns: 5
+    metrics:
+      default: /exporter/default-metrics.toml
+
+  default-metrics.toml: |
+    [[metric]]
+    context = ""
+    metricsdesc = { dbtype="Type of database the exporter is connected to (0=non-CDB, 1=CDB, >1=PDB)." }
+    request = '''
+    select sys_context('USERENV', 'CON_ID') as dbtype
+    from dual
+    '''
+
+    [[metric]]
+    context = "sessions"
+    labels = [ "inst_id", "status", "type" ]
+    metricsdesc = { value= "Gauge metric with count of sessions by inst_id, status and type." }
+    request = '''
+    select inst_id, status, type, count(*) as value
+    from gv$session
+    group by inst_id, status, type
+    '''
+
+    [[metric]]
+    context = "activity"
+    labels = [ "inst_id" ]
+    metricsdesc = { value="Generic counter metric from gv$sysstat view in Oracle." }
+    fieldtoappend = "name"
+    request = '''
+    select inst_id, name, value from gv$sysstat
+    where name in ('parse count (total)', 'execute count', 'user commits', 'user rollbacks')
+    group by inst_id, name, value
+    '''
+
+    [[metric]]
+    context = "process"
+    labels = [ "inst_id" ]
+    metricsdesc = { count="Gauge metric with count of processes." }
+    request = '''
+    select inst_id, count(*) as count
+    from gv$process
+    group by inst_id
+    '''
+
+    [[metric]]
+    context = "wait_time"
+    labels = [ "inst_id", "wait_class", "con_id" ]
+    metricsdesc = { time_waited_sec_total="counter metric from system_wait_class view in Oracle." }
+    metricstype = { time_waited_sec_total = "counter" }
+    fieldtoappend= "wait_class"
+    request = '''
+    select
+        inst_id,
+        wait_class,
+        round(time_waited/100,3) time_waited_sec_total,
+        con_id
+    from gv$system_wait_class
+    where wait_class <> 'Idle'
+    group by inst_id, wait_class, con_id, round(time_waited/100,3)
+    '''
+    ignorezeroresult = true
+
+    [[metric]]
+    context = "dml"
+    labels = [ "inst_id" ]
+    metricsdesc = { value="DML row operation counters from gv$sysstat." }
+    metricstype = { value = "counter" }
+    fieldtoappend = "name"
+    request = '''
+    select inst_id,
+           case name
+               when 'db block changes' then 'block_changes'
+               when 'redo entries' then 'redo_entries'
+               when 'redo size' then 'redo_bytes'
+               when 'table scan rows gotten' then 'rows_scanned'
+               else replace(lower(name), ' ', '_')
+           end as name,
+           value
+    from gv$sysstat
+    where name in (
+        'db block changes',
+        'redo entries',
+        'redo size',
+        'table scan rows gotten'
+    )
+    '''

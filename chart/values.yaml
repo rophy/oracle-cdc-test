@@ -14,9 +14,6 @@ oracle:
     requests:
       memory: "2Gi"
       cpu: "1"
-    limits:
-      memory: "8Gi"
-      cpu: "4"
   persistence:
     enabled: true
     oradata:
@@ -33,9 +30,6 @@ olr:
     requests:
       memory: "256Mi"
       cpu: "250m"
-    limits:
-      memory: "4Gi"
-      cpu: "2"
   persistence:
     checkpoint:
       size: 1Gi
@@ -52,11 +46,8 @@ kafka:
     pullPolicy: IfNotPresent
   resources:
     requests:
-      memory: "512Mi"
-      cpu: "250m"
-    limits:
-      memory: "2Gi"
-      cpu: "1"
+      memory: "1Gi"
+      cpu: "500m"
   persistence:
     enabled: true
     size: 10Gi
@@ -73,9 +64,6 @@ kafkaConsumer:
     requests:
       memory: "64Mi"
       cpu: "100m"
-    limits:
-      memory: "256Mi"
-      cpu: "500m"
   persistence:
     enabled: true
     size: 1Gi
@@ -91,9 +79,6 @@ debezium:
     requests:
       memory: "512Mi"
       cpu: "500m"
-    limits:
-      memory: "1Gi"
-      cpu: "1"
   persistence:
     enabled: true
     size: 1Gi
@@ -122,9 +107,6 @@ hammerdb:
     requests:
       memory: "512Mi"
       cpu: "500m"
-    limits:
-      memory: "2Gi"
-      cpu: "2"
   # Oracle connection settings
   oracle:
     systemPassword: "OraclePwd123"
@@ -142,8 +124,70 @@ hammerdb:
     rampupMinutes: 2
     durationMinutes: 5
 
+# Prometheus stack (kube-prometheus-stack subchart)
+prometheus:
+  # Set to true to deploy Prometheus Operator and Grafana
+  enabled: true
+
+# kube-prometheus-stack subchart values (only used when prometheus.enabled=true)
+kube-prometheus-stack:
+  # Install CRDs with the chart
+  crds:
+    enabled: true
+  # Disable components not needed for this use case
+  alertmanager:
+    enabled: false
+  grafana:
+    enabled: false
+  nodeExporter:
+    enabled: true
+  kubeStateMetrics:
+    enabled: false
+  # Enable kubelet for container CPU/memory metrics (cAdvisor)
+  kubelet:
+    enabled: true
+  # Disable k8s control plane monitors
+  kubeApiServer:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+  coreDns:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  # Prometheus server config
+  prometheus:
+    prometheusSpec:
+      # Discover all ServiceMonitors in namespace
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      # Retain data for 7 days
+      retention: 7d
+      # Storage
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+
 # Metrics exporters
 metrics:
+  # Oracle database metrics exporter
+  oracleExporter:
+    image:
+      repository: container-registry.oracle.com/database/observability-exporter
+      tag: "2.2.0"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
   # JMX exporter for Debezium (sidecar in full mode)
   jmxExporter:
     image:
@@ -159,7 +203,9 @@ metrics:
       pullPolicy: IfNotPresent
   # ServiceMonitor for Prometheus Operator
   serviceMonitor:
-    enabled: false
+    # Enable to create ServiceMonitor resources for Prometheus Operator
+    enabled: true
+    # Labels to add to ServiceMonitors (e.g., for Prometheus selector)
     labels: {}
     interval: "15s"
     scrapeTimeout: "10s"
