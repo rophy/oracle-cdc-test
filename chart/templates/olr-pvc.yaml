@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-olr-checkpoint
+  labels:
+    app: {{ .Release.Name }}-olr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.olr.persistence.checkpoint.size }}
+  {{- if .Values.olr.persistence.checkpoint.storageClass }}
+  storageClassName: {{ .Values.olr.persistence.checkpoint.storageClass }}
+  {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-olr-output
+  labels:
+    app: {{ .Release.Name }}-olr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.olr.persistence.output.size }}
+  {{- if .Values.olr.persistence.output.storageClass }}
+  storageClassName: {{ .Values.olr.persistence.output.storageClass }}
+  {{- end }}

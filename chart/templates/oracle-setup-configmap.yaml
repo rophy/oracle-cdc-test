@@ -5,9 +5,31 @@ metadata:
   labels:
     app: {{ .Release.Name }}-oracle
 data:
-  01_setup.sql: |
-    -- Oracle setup for Debezium CDC
-    -- This script runs automatically when Oracle container starts
+  01_startup.sh: |
+    #!/bin/bash
+    # Oracle startup script with idempotency guard
+    # This runs on every container start but only executes setup once
+
+    DB_INITIALISED="/opt/oracle/oradata/dbinit"
+
+    if [ -f "${DB_INITIALISED}" ]; then
+        echo "Database already initialized, skipping setup"
+        exit 0
+    fi
+
+    echo "Running first-time database setup..."
+    sqlplus -S / as sysdba @/container-entrypoint-startdb.d/setup.ddl
+
+    if [ $? -eq 0 ]; then
+        touch "${DB_INITIALISED}"
+        echo "Database setup completed successfully"
+    else
+        echo "Database setup failed!"
+        exit 1
+    fi
+
+  setup.ddl: |
+    -- Oracle setup for CDC (Debezium + OpenLogReplicator)
     -- Adapted for Oracle 23 Free (FREE/FREEPDB1)
 
     -- Enable ARCHIVELOG mode
@@ -16,19 +38,41 @@ data:
     ALTER DATABASE ARCHIVELOG;
     ALTER DATABASE OPEN;
 
+    -- Set archive destination inside oradata (accessible to OLR via shared volume)
+    ALTER SYSTEM SET LOG_ARCHIVE_DEST_1='LOCATION=/opt/oracle/oradata/FREE/archivelog' SCOPE=BOTH;
+
+    -- Create the archive directory
+    HOST mkdir -p /opt/oracle/oradata/FREE/archivelog
+
     -- Enable supplemental logging
     ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
     ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
     ALTER SYSTEM ARCHIVE LOG CURRENT;
 
-    -- Set recovery area
-    ALTER SYSTEM SET DB_RECOVERY_FILE_DEST_SIZE = '10G' SCOPE = BOTH;
-    ALTER SYSTEM SET DB_RECOVERY_FILE_DEST = '/opt/oracle/fra' SCOPE = BOTH;
+    -- ============================================
+    -- Resize redo logs for better CDC performance
+    -- Default 10MB is too small, increase to 500MB
+    -- ============================================
 
+    -- Add new 500MB redo log groups
+    ALTER DATABASE ADD LOGFILE GROUP 4 ('/opt/oracle/oradata/FREE/redo04.log') SIZE 500M;
+    ALTER DATABASE ADD LOGFILE GROUP 5 ('/opt/oracle/oradata/FREE/redo05.log') SIZE 500M;
+    ALTER DATABASE ADD LOGFILE GROUP 6 ('/opt/oracle/oradata/FREE/redo06.log') SIZE 500M;
+
+    -- Force log switches to make old groups inactive
+    ALTER SYSTEM SWITCH LOGFILE;
+    ALTER SYSTEM SWITCH LOGFILE;
+    ALTER SYSTEM SWITCH LOGFILE;
+    ALTER SYSTEM CHECKPOINT;
+
+    -- Drop old smaller log groups
+    ALTER DATABASE DROP LOGFILE GROUP 1;
+    ALTER DATABASE DROP LOGFILE GROUP 2;
+
+    -- ============================================
     -- Create Debezium user in CDB (common user)
+    -- ============================================
     CREATE USER c##dbzuser IDENTIFIED BY dbzpwd;
-
-    -- Grant quota on SYSTEM tablespace for Debezium flush table
     ALTER USER c##dbzuser QUOTA UNLIMITED ON SYSTEM;
 
     GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
@@ -58,10 +102,69 @@ data:
     GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL;
     GRANT SELECT ON V_$TRANSACTION TO c##dbzuser CONTAINER=ALL;
 
-    -- Switch to PDB (FREEPDB1 for Oracle 23 Free)
+    -- ============================================
+    -- Create OpenLogReplicator user in CDB
+    -- ============================================
+    CREATE USER c##olruser IDENTIFIED BY olrpwd;
+
+    GRANT CREATE SESSION TO c##olruser CONTAINER=ALL;
+    GRANT SET CONTAINER TO c##olruser CONTAINER=ALL;
+
+    -- Required for schema discovery
+    GRANT SELECT, FLASHBACK ON SYS.CCOL$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.CDEF$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.COL$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.DEFERRED_STG$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.ECOL$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.LOB$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.LOBCOMPPART$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.LOBFRAG$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.OBJ$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.TAB$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.TABCOMPART$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.TABPART$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.TABSUBPART$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.TS$ TO c##olruser CONTAINER=ALL;
+    GRANT SELECT, FLASHBACK ON SYS.USER$ TO c##olruser CONTAINER=ALL;
+
+    -- Required for redo log discovery
+    GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$DATABASE TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$DATABASE_INCARNATION TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$LOG TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$LOGFILE TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$PARAMETER TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$STANDBY_LOG TO c##olruser CONTAINER=ALL;
+    GRANT SELECT ON SYS.V_$TRANSPORTABLE_PLATFORM TO c##olruser CONTAINER=ALL;
+
+    -- Broad access for XDB and other internal tables
+    GRANT SELECT ANY TABLE TO c##olruser CONTAINER=ALL;
+    GRANT FLASHBACK ANY TABLE TO c##olruser CONTAINER=ALL;
+
+    -- Switch to PDB
     ALTER SESSION SET CONTAINER = {{ .Values.debezium.oracle.pdbName }};
 
-    -- Create test user and table (same as OpenLogReplicator tutorial)
+    -- Grant OLR privileges in PDB context
+    GRANT SELECT ANY TABLE TO c##olruser;
+    GRANT FLASHBACK ANY TABLE TO c##olruser;
+
+    -- Grant explicit access to XDB tables (required for Oracle 23ai)
+    DECLARE
+      v_sql VARCHAR2(500);
+    BEGIN
+      FOR rec IN (SELECT table_name FROM dba_tables WHERE owner = 'XDB') LOOP
+        BEGIN
+          v_sql := 'GRANT SELECT, FLASHBACK ON XDB."' || rec.table_name || '" TO c##olruser';
+          EXECUTE IMMEDIATE v_sql;
+        EXCEPTION
+          WHEN OTHERS THEN
+            NULL;
+        END;
+      END LOOP;
+    END;
+    /
+
+    -- Create test tablespace and user
     CREATE TABLESPACE TBLS1 DATAFILE '/opt/oracle/oradata/FREE/{{ .Values.debezium.oracle.pdbName }}/tbls1.dbf' SIZE 100M AUTOEXTEND ON NEXT 100M;
     ALTER TABLESPACE TBLS1 FORCE LOGGING;
 
@@ -78,10 +181,8 @@ data:
       CONSTRAINT ADAM1PK PRIMARY KEY(ID)
     );
 
-    -- Enable supplemental logging on the table
     ALTER TABLE USR1.ADAM1 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
-    -- Insert initial data
     INSERT INTO USR1.ADAM1 VALUES (1, 'Initial Row', 100, SYSTIMESTAMP);
     COMMIT;
 

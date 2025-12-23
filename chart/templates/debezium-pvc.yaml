@@ -1,4 +1,4 @@
-{{- if .Values.debezium.persistence.enabled }}
+{{- if and (eq .Values.mode "full") .Values.debezium.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

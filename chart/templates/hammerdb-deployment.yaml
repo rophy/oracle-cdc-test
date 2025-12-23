@@ -1,4 +1,3 @@
-{{- if .Values.hammerdb.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +14,10 @@ spec:
       labels:
         app: {{ .Release.Name }}-hammerdb
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       initContainers:
         # Wait for Oracle to be ready
         - name: wait-for-oracle
@@ -24,27 +27,40 @@ spec:
         - name: hammerdb
           image: "{{ .Values.hammerdb.image.repository }}:{{ .Values.hammerdb.image.tag }}"
           imagePullPolicy: {{ .Values.hammerdb.image.pullPolicy }}
-          command: ["/bin/bash", "-c", "sleep infinity"]
+          command: ["/scripts/entrypoint.sh"]
+          args: ["web"]
           resources:
             {{- toYaml .Values.hammerdb.resources | nindent 12 }}
           volumeMounts:
             - name: scripts
               mountPath: /scripts
+            - name: output
+              mountPath: /tmp
           env:
+            - name: TMP
+              value: "/tmp"
+            - name: LD_LIBRARY_PATH
+              value: "/home/instantclient_21_5"
+            - name: ORACLE_LIBRARY
+              value: "/home/instantclient_21_5/libclntsh.so"
             - name: ORACLE_HOST
               value: "{{ .Release.Name }}-oracle"
             - name: ORACLE_PORT
               value: "{{ .Values.hammerdb.oracle.port }}"
             - name: ORACLE_SERVICE
               value: "{{ .Values.hammerdb.oracle.serviceName }}"
-            # Oracle Instant Client library path
-            - name: LD_LIBRARY_PATH
-              value: "/home/instantclient_21_5"
-            - name: ORACLE_LIBRARY
-              value: "/home/instantclient_21_5/libclntsh.so"
+            - name: ORACLE_USER
+              value: "system"
+            - name: ORACLE_PASSWORD
+              value: "{{ .Values.hammerdb.oracle.systemPassword }}"
+            - name: ORACLE_INSTANCE
+              value: "{{ .Release.Name }}-oracle:{{ .Values.hammerdb.oracle.port }}/{{ .Values.hammerdb.oracle.serviceName }}"
+            - name: HAMMERDB_VUS
+              value: "{{ .Values.hammerdb.virtualUsers }}"
       volumes:
         - name: scripts
           configMap:
             name: {{ .Release.Name }}-hammerdb-scripts
             defaultMode: 0755
-{{- end }}
+        - name: output
+          emptyDir: {}

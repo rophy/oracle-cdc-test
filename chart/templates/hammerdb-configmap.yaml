@@ -1,4 +1,3 @@
-{{- if .Values.hammerdb.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -155,29 +154,42 @@ data:
     echo "  run      - Run TPROC-C workload"
     echo "  delete   - Delete TPROC-C schema"
     echo "  shell    - Interactive hammerdbcli shell"
+    echo "  web      - Start web service (port 8080)"
     echo ""
+
+    TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+    OUTPUT_DIR="/tmp"
 
     case "${1:-shell}" in
       build)
         echo "Building TPROC-C schema..."
-        ./hammerdbcli auto /scripts/buildschema.tcl
+        stdbuf -oL ./hammerdbcli auto /scripts/buildschema.tcl 2>&1 | tee "${OUTPUT_DIR}/build_${TIMESTAMP}.log"
         ;;
       run)
         echo "Running TPROC-C workload..."
-        ./hammerdbcli auto /scripts/runworkload.tcl
+        stdbuf -oL ./hammerdbcli auto /scripts/runworkload.tcl 2>&1 | tee "${OUTPUT_DIR}/run_${TIMESTAMP}.log"
         ;;
       delete)
         echo "Deleting TPROC-C schema..."
-        ./hammerdbcli auto /scripts/deleteschema.tcl
+        stdbuf -oL ./hammerdbcli auto /scripts/deleteschema.tcl 2>&1 | tee "${OUTPUT_DIR}/delete_${TIMESTAMP}.log"
         ;;
       shell)
         echo "Starting interactive shell..."
         exec ./hammerdbcli
         ;;
+      web)
+        echo "Initializing jobs database..."
+        echo "jobs" > /tmp/init.tcl
+        ./hammerdbcli auto /tmp/init.tcl
+        exec ./hammerdbws wait
+        ;;
+      sleep)
+        echo "Sleeping forever..."
+        exec bash -c "sleep infinity"
+        ;;
       *)
         echo "Unknown command: $1"
-        echo "Usage: $0 {build|run|delete|shell}"
+        echo "Usage: $0 {build|run|delete|shell|web|sleep}"
         exit 1
         ;;
     esac
-{{- end }}

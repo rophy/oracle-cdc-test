@@ -1,3 +1,4 @@
+{{- if eq .Values.mode "full" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,15 +7,16 @@ metadata:
     app: {{ .Release.Name }}-debezium
 data:
   application.properties: |
-    # Debezium Server Configuration for Oracle to File
-    # Uses HTTP sink with a simple file-writer service
+    # Debezium Server Configuration for Oracle via OpenLogReplicator
+    # Uses Kafka sink
 
     # ============================================
-    # Sink Configuration (HTTP -> File Writer)
+    # Sink Configuration (Kafka)
     # ============================================
-    debezium.sink.type=http
-    debezium.sink.http.url=http://{{ .Release.Name }}-file-writer:{{ .Values.fileWriter.port }}/events
-    debezium.sink.http.timeout.ms=5000
+    debezium.sink.type=kafka
+    debezium.sink.kafka.producer.bootstrap.servers={{ .Release.Name }}-kafka:9092
+    debezium.sink.kafka.producer.key.serializer=org.apache.kafka.common.serialization.StringSerializer
+    debezium.sink.kafka.producer.value.serializer=org.apache.kafka.common.serialization.StringSerializer
 
     # ============================================
     # Format Configuration
@@ -24,7 +26,7 @@ data:
     debezium.format.value.schemas.enable=false
 
     # ============================================
-    # Source Configuration (Oracle with LogMiner)
+    # Source Configuration (Oracle with OpenLogReplicator)
     # ============================================
     debezium.source.connector.class=io.debezium.connector.oracle.OracleConnector
     debezium.source.database.hostname={{ .Release.Name }}-oracle
@@ -35,13 +37,14 @@ data:
     debezium.source.database.pdb.name={{ .Values.debezium.oracle.pdbName }}
     debezium.source.topic.prefix={{ .Values.debezium.topicPrefix }}
 
-    # LogMiner configuration
-    debezium.source.database.connection.adapter=logminer
-    debezium.source.log.mining.strategy=online_catalog
+    # OpenLogReplicator adapter configuration
+    debezium.source.database.connection.adapter=olr
+    debezium.source.openlogreplicator.source=ORACLE
+    debezium.source.openlogreplicator.host={{ .Release.Name }}-olr
+    debezium.source.openlogreplicator.port=9000
 
     # Tables to capture
     debezium.source.schema.include.list={{ .Values.debezium.schemaIncludeList }}
-    debezium.source.table.include.list={{ .Values.debezium.tableIncludeList }}
 
     # Offset storage
     debezium.source.offset.storage.file.filename=/debezium/data/offsets.dat
@@ -54,13 +57,7 @@ data:
     # Snapshot mode
     debezium.source.snapshot.mode={{ .Values.debezium.snapshotMode }}
 
-    {{- if .Values.debezium.smt.enabled }}
-    # ============================================
-    # SMT Configuration (Legacy Charset Transform)
-    # ============================================
-    debezium.transforms=legacycharset
-    debezium.transforms.legacycharset.type=com.example.debezium.smt.LegacyCharsetTransform
-    debezium.transforms.legacycharset.encoding={{ .Values.debezium.smt.encoding }}
-    debezium.transforms.legacycharset.columns={{ .Values.debezium.smt.columns }}
-    debezium.transforms.legacycharset.tables={{ .Values.debezium.smt.tables }}
-    {{- end }}
+    # Skip schema changes to avoid crashes when encountering unknown tables
+    debezium.source.include.schema.changes=false
+    debezium.source.schema.history.internal.store.only.captured.tables.ddl=true
+{{- end }}

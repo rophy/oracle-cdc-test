@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-olr-config
+  labels:
+    app: {{ .Release.Name }}-olr
+data:
+  {{- if eq .Values.mode "olr-only" }}
+  # olr-only mode: write directly to file
+  OpenLogReplicator.json: |
+    {
+      "version": "1.8.7",
+      "log-level": 4,
+      "trace": 131627,
+      "source": [
+        {
+          "alias": "FREE",
+          "name": "ORACLE",
+          "metrics": {
+            "type": "prometheus",
+            "bind": "0.0.0.0:9161",
+            "tag-names": "filter"
+          },
+          "reader": {
+            "type": "online",
+            "con-id": 3,
+            "user": "c##olruser",
+            "password": "olrpwd",
+            "server": "{{ .Release.Name }}-oracle:1521/{{ .Values.debezium.oracle.pdbName }}"
+          },
+          "format": {
+            "type": "json",
+            "column": 2,
+            "db": 3,
+            "interval-dts": 9,
+            "interval-ytm": 4,
+            "message": 2,
+            "rid": 1,
+            "schema": 7,
+            "scn": 0,
+            "scn-type": 1,
+            "timestamp-all": 1
+          },
+          "memory": {
+            "min-mb": 256,
+            "max-mb": 8192,
+            "swap-path": "/output/swap"
+          },
+          "filter": {
+            "table": [
+              {"owner": "USR1", "table": ".*"},
+              {"owner": "TPCC", "table": "CUSTOMER"},
+              {"owner": "TPCC", "table": "DISTRICT"},
+              {"owner": "TPCC", "table": "HISTORY"},
+              {"owner": "TPCC", "table": "ITEM"},
+              {"owner": "TPCC", "table": "ORDERS"},
+              {"owner": "TPCC", "table": "STOCK"},
+              {"owner": "TPCC", "table": "WAREHOUSE"}
+            ]
+          }
+        }
+      ],
+      "target": [
+        {
+          "alias": "file-output",
+          "source": "FREE",
+          "writer": {
+            "type": "file",
+            "output": "/output/events.json",
+            "max-file-size": 0,
+            "append": 1
+          }
+        }
+      ]
+    }
+  {{- else }}
+  # full mode: feed Debezium via network
+  OpenLogReplicator.json: |
+    {
+      "version": "1.8.7",
+      "source": [
+        {
+          "alias": "FREE",
+          "name": "ORACLE",
+          "metrics": {
+            "type": "prometheus",
+            "bind": "0.0.0.0:9161",
+            "tag-names": "filter"
+          },
+          "reader": {
+            "type": "online",
+            "con-id": 3,
+            "user": "c##olruser",
+            "password": "olrpwd",
+            "server": "{{ .Release.Name }}-oracle:1521/{{ .Values.debezium.oracle.pdbName }}"
+          },
+          "format": {
+            "type": "json",
+            "column": 2,
+            "db": 3,
+            "interval-dts": 9,
+            "interval-ytm": 4,
+            "message": 2,
+            "rid": 1,
+            "schema": 7,
+            "scn": 0,
+            "scn-type": 1,
+            "timestamp-all": 1
+          },
+          "memory": {
+            "min-mb": 256,
+            "max-mb": 4096,
+            "swap-path": "/output/swap"
+          },
+          "state": {
+            "type": "disk",
+            "interval-s": 10,
+            "interval-mb": 100
+          },
+          "filter": {
+            "table": [
+              {"owner": "USR1", "table": ".*"},
+              {"owner": "TPCC", "table": ".*"}
+            ]
+          }
+        }
+      ],
+      "target": [
+        {
+          "alias": "debezium",
+          "source": "FREE",
+          "writer": {
+            "type": "network",
+            "uri": "0.0.0.0:9000",
+            "queue-size": 200000
+          }
+        }
+      ]
+    }
+  {{- end }}

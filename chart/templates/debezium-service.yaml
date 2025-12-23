@@ -1,3 +1,4 @@
+{{- if eq .Values.mode "full" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -11,11 +12,15 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
-    - name: metrics
-      port: 9404
-      targetPort: 9404
+    - port: 8080
+      targetPort: http
+      name: http
+    - port: 1099
+      targetPort: jmx
+      name: jmx
+    - port: 9404
+      targetPort: metrics
+      name: metrics
   selector:
     app: {{ .Release.Name }}-debezium
+{{- end }}

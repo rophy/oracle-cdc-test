@@ -1,51 +1,65 @@
-Debezium Oracle CDC has been deployed!
+Oracle CDC has been deployed in {{ .Values.mode }} mode!
 
-Components:
+Components deployed:
 - Oracle Database: {{ .Release.Name }}-oracle
-- File Writer: {{ .Release.Name }}-file-writer
+- OpenLogReplicator: {{ .Release.Name }}-olr
+{{- if eq .Values.mode "full" }}
+- Kafka: {{ .Release.Name }}-kafka
 - Debezium Server: {{ .Release.Name }}-debezium
+- Kafka Consumer: {{ .Release.Name }}-kafka-consumer
+{{- end }}
 
 To check the status of all pods:
-  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl get pods -l app={{ .Release.Name }}-oracle
+  kubectl get pods -l app={{ .Release.Name }}-olr
+{{- if eq .Values.mode "full" }}
+  kubectl get pods -l app={{ .Release.Name }}-kafka
+  kubectl get pods -l app={{ .Release.Name }}-debezium
+{{- end }}
 
 To view Oracle logs:
   kubectl logs -f deployment/{{ .Release.Name }}-oracle
 
+To view OLR logs:
+  kubectl logs -f deployment/{{ .Release.Name }}-olr
+
+{{- if eq .Values.mode "full" }}
 To view Debezium logs:
   kubectl logs -f deployment/{{ .Release.Name }}-debezium
 
-To view captured CDC events:
-  kubectl exec -it deployment/{{ .Release.Name }}-file-writer -- cat /app/output/events.json
+To list Kafka topics:
+  kubectl exec -it deployment/{{ .Release.Name }}-kafka -- \
+    /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+To view captured CDC events (via kafka-consumer):
+  kubectl exec -it deployment/{{ .Release.Name }}-kafka-consumer -- \
+    tail -f /app/output/events.json
+{{- else }}
+To view captured CDC events (olr-only mode):
+  kubectl exec -it deployment/{{ .Release.Name }}-olr -- \
+    tail -f /output/events.json
+{{- end }}
 
 To connect to Oracle:
-  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- sqlplus sys/{{ .Values.oracle.password }}@{{ .Values.debezium.oracle.pdbName }} as sysdba
+  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- \
+    sqlplus sys/{{ .Values.oracle.password }}@{{ .Values.debezium.oracle.pdbName }} as sysdba
 
 To insert test data:
-  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- sqlplus USR1/USR1PWD@{{ .Values.debezium.oracle.pdbName }} <<EOF
-  INSERT INTO ADAM1 VALUES (2, 'Test Row', 200, SYSTIMESTAMP);
-  COMMIT;
-  EOF
+  kubectl exec -it deployment/{{ .Release.Name }}-oracle -- \
+    sqlplus -S USR1/USR1PWD@//localhost:1521/{{ .Values.debezium.oracle.pdbName }} \
+    <<< "INSERT INTO ADAM1 VALUES (2, 'Test Row', 200, SYSTIMESTAMP); COMMIT;"
 
 Note: Oracle takes several minutes to initialize on first start.
 Wait for "DATABASE IS READY TO USE!" in the Oracle logs before testing.
-{{- if .Values.hammerdb.enabled }}
 
 HammerDB Performance Testing:
 - HammerDB: {{ .Release.Name }}-hammerdb
 
-To build TPROC-C schema ({{ .Values.hammerdb.tpcc.warehouses }} warehouses):
-  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
-    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/buildschema.tcl"
+To build TPROC-C schema:
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- /scripts/entrypoint.sh build
 
-To run TPROC-C workload ({{ .Values.hammerdb.tpcc.runVirtualUsers }} virtual users, {{ .Values.hammerdb.tpcc.durationMinutes }} min):
-  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
-    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/runworkload.tcl"
+To run TPROC-C workload:
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- /scripts/entrypoint.sh run
 
 To delete TPROC-C schema:
-  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
-    "cd /home/HammerDB-* && ./hammerdbcli auto /scripts/deleteschema.tcl"
-
-To run interactive HammerDB CLI:
-  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- bash -c \
-    "cd /home/HammerDB-* && ./hammerdbcli"
-{{- end }}
+  kubectl exec -it deployment/{{ .Release.Name }}-hammerdb -- /scripts/entrypoint.sh delete

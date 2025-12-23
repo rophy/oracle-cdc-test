@@ -1,3 +1,4 @@
+{{- if eq .Values.mode "full" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,7 +18,7 @@ spec:
         app: {{ .Release.Name }}-debezium
     spec:
       initContainers:
-        # Fix permissions on EBS volume (Debezium runs as UID 185)
+        # Fix permissions on volume (Debezium runs as UID 185)
         - name: fix-permissions
           image: busybox:1.36
           command: ['sh', '-c', 'chown -R 185:185 /debezium/data && chmod 755 /debezium/data']
@@ -30,10 +31,14 @@ spec:
         - name: wait-for-oracle
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-oracle 1521; do echo waiting for oracle; sleep 5; done']
-        # Wait for file-writer to be ready
-        - name: wait-for-file-writer
+        # Wait for Kafka to be ready
+        - name: wait-for-kafka
           image: busybox:1.36
-          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-file-writer {{ .Values.fileWriter.port }}; do echo waiting for file-writer; sleep 2; done']
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-kafka 9092; do echo waiting for kafka; sleep 5; done']
+        # Wait for OLR to be ready
+        - name: wait-for-olr
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-olr 9000; do echo waiting for olr; sleep 5; done']
       containers:
         - name: debezium
           image: "{{ .Values.debezium.image.repository }}:{{ .Values.debezium.image.tag }}"
@@ -50,12 +55,13 @@ spec:
             {{- toYaml .Values.debezium.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: /debezium/conf
+              mountPath: /debezium/config
             - name: data
               mountPath: /debezium/data
         # JMX Exporter sidecar for Prometheus metrics
         - name: jmx-exporter
-          image: sscaling/jmx-prometheus-exporter:0.12.0
+          image: "{{ .Values.metrics.jmxExporter.image.repository }}:{{ .Values.metrics.jmxExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.jmxExporter.image.pullPolicy }}
           env:
             - name: SERVICE_PORT
               value: "9404"
@@ -81,3 +87,4 @@ spec:
         - name: jmx-config
           configMap:
             name: {{ .Release.Name }}-jmx-exporter-config
+{{- end }}

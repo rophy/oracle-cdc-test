@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-olr
+  labels:
+    app: {{ .Release.Name }}-olr
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: network
+      name: network
+    - port: 9161
+      targetPort: metrics
+      name: metrics
+  selector:
+    app: {{ .Release.Name }}-olr

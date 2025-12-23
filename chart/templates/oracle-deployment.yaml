@@ -17,17 +17,22 @@ spec:
         app: {{ .Release.Name }}-oracle
     spec:
       initContainers:
-        # Fix permissions on EBS volumes for oracle user (UID 54321)
+        # Fix permissions and clean up stale Oracle lock files
         - name: fix-permissions
           image: busybox:1.36
-          command: ['sh', '-c', 'chown -R 54321:54321 /opt/oracle/oradata /opt/oracle/fra']
+          command:
+            - sh
+            - -c
+            - |
+              chown -R 54321:54321 /opt/oracle/oradata
+              # Clean up stale lock files that cause ORA-01081 on restart
+              rm -f /opt/oracle/oradata/FREE/*.lck 2>/dev/null || true
+              rm -f /opt/oracle/oradata/FREE/FREEPDB1/*.lck 2>/dev/null || true
           securityContext:
             runAsUser: 0
           volumeMounts:
             - name: oradata
               mountPath: /opt/oracle/oradata
-            - name: fra
-              mountPath: /opt/oracle/fra
       containers:
         - name: oracle
           image: "{{ .Values.oracle.image.repository }}:{{ .Values.oracle.image.tag }}"
@@ -36,30 +41,37 @@ spec:
             - containerPort: 1521
               name: oracle
           env:
-            - name: ORACLE_PWD
+            - name: ORACLE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-oracle-secret
                   key: oracle-password
-            - name: ORACLE_CHARACTERSET
-              value: {{ .Values.oracle.characterSet | quote }}
           resources:
             {{- toYaml .Values.oracle.resources | nindent 12 }}
           volumeMounts:
             - name: oradata
               mountPath: /opt/oracle/oradata
-            - name: fra
-              mountPath: /opt/oracle/fra
             - name: setup-scripts
-              mountPath: /opt/oracle/scripts/setup
+              mountPath: /container-entrypoint-startdb.d
+          # Match docker-compose healthcheck: check that c##dbzuser exists
           readinessProbe:
             exec:
               command:
                 - /bin/bash
                 - -c
-                - echo "SELECT 1 FROM DUAL;" | sqlplus -s / as sysdba | grep -q 1
-            initialDelaySeconds: 60
+                - echo 'SELECT 1 FROM DUAL;' | sqlplus -S c##dbzuser/dbzpwd@//localhost:1521/FREE | grep -q 1
+            initialDelaySeconds: 180
             periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 20
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - echo 'SELECT 1 FROM DUAL;' | sqlplus -S / as sysdba | grep -q 1
+            initialDelaySeconds: 300
+            periodSeconds: 60
             timeoutSeconds: 10
       volumes:
         - name: oradata
@@ -69,13 +81,7 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
-        - name: fra
-          {{- if .Values.oracle.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-oracle-fra
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         - name: setup-scripts
           configMap:
             name: {{ .Release.Name }}-oracle-setup
+            defaultMode: 0755

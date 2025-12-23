@@ -1,0 +1,17 @@
+{{- if and (eq .Values.mode "full") .Values.kafkaConsumer.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-kafka-consumer-output
+  labels:
+    app: {{ .Release.Name }}-kafka-consumer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.kafkaConsumer.persistence.size }}
+  {{- if .Values.kafkaConsumer.persistence.storageClass }}
+  storageClassName: {{ .Values.kafkaConsumer.persistence.storageClass }}
+  {{- end }}
+{{- end }}
