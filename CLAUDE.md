@@ -165,4 +165,6 @@ docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server loca
 
 For detailed procedures, see:
 - `HOWTO_HAMMERDB.md` - HammerDB commands, web service, REST API
-- `HOWTO_PERFORMANCE_TEST.md` - Stress testing and report generation
+- `HOWTO_PERF.md` - Performance testing overview and metrics reference
+- `HOWTO_PERF_DOCKER.md` - Docker Compose performance testing
+- `HOWTO_PERF_K8S.md` - Kubernetes performance testing

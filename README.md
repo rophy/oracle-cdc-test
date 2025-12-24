@@ -398,7 +398,9 @@ kubectl rollout restart deployment/debezium-cdc-hammerdb
 | Guide | Description |
 |-------|-------------|
 | [HOWTO_HAMMERDB.md](HOWTO_HAMMERDB.md) | HammerDB commands, web service, REST API for job metrics |
-| [HOWTO_PERFORMANCE_TEST.md](HOWTO_PERFORMANCE_TEST.md) | Running stress tests and generating performance reports |
+| [HOWTO_PERF.md](HOWTO_PERF.md) | Performance testing overview and metrics reference |
+| [HOWTO_PERF_DOCKER.md](HOWTO_PERF_DOCKER.md) | Docker Compose performance testing |
+| [HOWTO_PERF_K8S.md](HOWTO_PERF_K8S.md) | Kubernetes performance testing |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Known issues and workarounds |
 
 ## References
