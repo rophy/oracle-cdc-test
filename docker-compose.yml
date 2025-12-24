@@ -1,4 +1,15 @@
 services:
+  # Autoheal: monitors and restarts unhealthy containers
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=30
+
   # Cleanup service - run with: docker compose --profile=clean run --rm clean
   clean:
     image: busybox:1.36
@@ -90,6 +101,15 @@ services:
       - ./config/oracle-exporter:/exporter:ro
     networks:
       - cdc-network
+    labels:
+      - autoheal=true
+    # Healthcheck: autoheal restarts container if oracledb_up metric is 0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9161/metrics | grep -q 'oracledb_up{database=\"default\"} 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   hammerdb:
     build: ./hammerdb
