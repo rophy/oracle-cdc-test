@@ -65,3 +65,56 @@ docker compose exec dbz jcmd 1 Thread.print | grep -A5 "change-event-source-coor
 # Check checkpoint gap (confirmed vs processed)
 docker compose exec olr cat /opt/OpenLogReplicator/checkpoint/ORACLE-chkpt.json
 ```
+
+## OLR/Debezium Backpressure Deadlock (Kubernetes)
+
+**Status**: Fixed for Kubernetes via reduced queue-size
+
+When running in Kubernetes and catching up on a large backlog of redo logs (e.g., after HammerDB benchmark), the OLR-Debezium pipeline can deadlock.
+
+**Symptoms**:
+- Debezium thread blocked on `OlrNetworkClient.fillBuffer` (socket read)
+- OLR metrics show large `bytes_sent` but very small `bytes_confirmed`
+- No new "records sent" messages in Debezium logs
+- OLR stops logging "processing redo log" messages
+
+**Root Cause**: Protocol-level backpressure deadlock between OLR and Debezium:
+
+1. OLR sends data to Debezium faster than it can be confirmed
+2. OLR's network writer queue fills (default 200,000 messages)
+3. OLR blocks waiting for confirmations before sending more
+4. Debezium only sends confirmations when offset commits occur (after receiving checkpoint events)
+5. OLR is blocked and can't send checkpoint events
+6. **Deadlock**: OLR waits for confirmations, Debezium waits for data
+
+**Why it affects Kubernetes but not Docker Compose**:
+- Docker Compose typically starts fresh with no historical backlog
+- In Kubernetes, deployments may restart while there's a large backlog to catch up on
+- The larger backlog fills the queue before checkpoint events are sent
+
+**Fix applied** in Kubernetes helm chart (`chart/templates/olr-configmap.yaml`):
+```json
+{
+  "target": [{
+    "writer": {
+      "queue-size": 10000  // Reduced from 200000
+    }
+  }]
+}
+```
+
+With a smaller queue, OLR blocks more frequently, ensuring checkpoint events are sent before the queue fills. This allows Debezium to send confirmations and prevent the deadlock.
+
+**Debugging tips**:
+```bash
+# Check OLR metrics (via port-forward or from within cluster)
+curl http://oracle-cdc-olr:9161/metrics | grep -E "(bytes_sent|bytes_confirmed|messages_)"
+
+# Check Debezium thread state
+kubectl exec deployment/oracle-cdc-debezium -c debezium -- jcmd 1 Thread.print | grep -A5 "change-event-source-coordinator"
+
+# Look for socket read block:
+# java.lang.Thread.State: RUNNABLE
+#   at sun.nio.ch.SocketDispatcher.read0
+#   at io.debezium.connector.oracle.olr.client.OlrNetworkClient.fillBuffer
+```

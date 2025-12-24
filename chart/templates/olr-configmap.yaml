@@ -132,7 +132,7 @@ data:
           "writer": {
             "type": "network",
             "uri": "0.0.0.0:9000",
-            "queue-size": 200000
+            "queue-size": 10000
           }
         }
       ]

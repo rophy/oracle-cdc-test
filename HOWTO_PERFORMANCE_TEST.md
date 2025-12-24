@@ -366,6 +366,8 @@ done
 echo "Debezium is streaming"
 ```
 
+> **Note**: The Kubernetes helm chart uses a reduced OLR `queue-size` (10000 vs 200000 in Docker Compose) to prevent a backpressure deadlock that can occur when catching up on large backlogs. See `KNOWN_ISSUES.md` for details.
+
 ### Step 2.5: Run HammerDB Benchmark
 
 ```bash
