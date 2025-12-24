@@ -102,6 +102,10 @@ data:
     GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL;
     GRANT SELECT ON V_$TRANSACTION TO c##dbzuser CONTAINER=ALL;
 
+    -- Required for Debezium to see dynamically created tables (e.g., HammerDB TPCC)
+    -- Without this, tables created after initialization won't appear in ALL_ALL_TABLES
+    GRANT SELECT ANY DICTIONARY TO c##dbzuser CONTAINER=ALL;
+
     -- ============================================
     -- Create OpenLogReplicator user in CDB
     -- ============================================

@@ -118,3 +118,32 @@ kubectl exec deployment/oracle-cdc-debezium -c debezium -- jcmd 1 Thread.print |
 #   at sun.nio.ch.SocketDispatcher.read0
 #   at io.debezium.connector.oracle.olr.client.OlrNetworkClient.fillBuffer
 ```
+
+## TPCC Schema Discovery Issue (Debezium OLR Adapter)
+
+**Status**: Workaround documented
+
+When HammerDB creates TPCC tables dynamically, Debezium (with OLR adapter) may fail to discover the schema and skip all TPCC events.
+
+**Symptoms**:
+- Debezium logs: "Table FREEPDB1.TPCC.ITEM was not found in ALL_ALL_TABLES"
+- Only `oracle.USR1.ADAM1` topic exists, no TPCC topics
+- `debezium_oracle_streaming_total_captured_dml` shows 0 for TPCC operations
+
+**Root Cause**: Race condition during table creation
+1. HammerDB CREATE TABLE DDL is in progress
+2. HammerDB immediately INSERTs data
+3. OLR captures INSERT and sends to Debezium
+4. Debezium queries ALL_ALL_TABLES but table DDL hasn't committed yet
+5. Debezium caches "not found" and skips all future events for that table
+
+**Workaround**: Restart Debezium after HammerDB build completes
+```bash
+# After HammerDB build finishes
+kubectl rollout restart deployment/oracle-cdc-debezium -n oracle-cdc
+```
+
+**Mitigation applied**:
+- Added `GRANT SELECT ANY DICTIONARY TO c##dbzuser` in Oracle setup
+- This allows Debezium to see tables in ALL_ALL_TABLES once they exist
+- However, if the first event arrives before DDL commits, the table is still skipped
