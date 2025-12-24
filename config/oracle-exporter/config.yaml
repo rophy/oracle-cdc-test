@@ -1,6 +1,6 @@
 databases:
   default:
-    url: oracle:1521/FREE
+    url: //oracle:1521/FREE
     username: c##dbzuser
     password: dbzpwd
     queryTimeout: 5
