@@ -9,21 +9,54 @@ This guide covers how to run HammerDB stress tests and generate performance repo
 | **Docker Compose** | Local development, quick testing |
 | **Kubernetes** | Production-like environment, uses Helm chart |
 
----
+## Quick Start
 
-# Docker Compose
+```bash
+# Set deployment mode (required)
+export DEPLOY_MODE=docker  # or: export DEPLOY_MODE=k8s
+
+# Deploy full pipeline
+make up-full
+
+# Wait for Oracle, then build TPCC schema
+# (see platform-specific sections below for details)
+
+# Run benchmark
+make run-bench
+
+# Generate report
+make report
+```
 
 ## Makefile Targets
+
+All targets require `DEPLOY_MODE` environment variable to be set.
 
 | Target | Description |
 |--------|-------------|
 | `make up` | Start base stack (Oracle + monitoring) |
 | `make up-olr` | Start with OLR direct to file |
 | `make up-full` | Start full pipeline (OLR → Debezium → Kafka) |
-| `make down` | Stop all containers (preserves volumes) |
-| `make clean` | Clean output files and remove everything including volumes |
+| `make down` | Stop all containers/pods (preserves volumes/PVCs) |
+| `make clean` | Clean output files and remove everything including volumes/PVCs |
 | `make run-bench` | Run HammerDB benchmark with timestamp tracking |
 | `make report` | Generate performance report from last benchmark run |
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DEPLOY_MODE` | Yes | `docker` or `k8s` |
+| `K8S_NAMESPACE` | No | Kubernetes namespace (default: `oracle-cdc`) |
+| `HELM_RELEASE` | No | Helm release name (default: `oracle-cdc`) |
+
+---
+
+# Docker Compose
+
+```bash
+export DEPLOY_MODE=docker
+```
 
 ## Part 1: Setup (Common Steps)
 
@@ -269,6 +302,10 @@ python3 scripts/report-generator/generate_report.py \
 
 # Kubernetes (Helm Chart)
 
+```bash
+export DEPLOY_MODE=k8s
+```
+
 ## Prerequisites
 
 - Kubernetes cluster with kubectl configured
@@ -277,17 +314,14 @@ python3 scripts/report-generator/generate_report.py \
 
 ## Part 1: Deploy the Stack
 
-### Step 1.1: Install the Helm Chart
+### Step 1.1: Deploy the Stack
 
 ```bash
-# Update dependencies
-helm dependency update chart/
+# Full pipeline (default)
+make up-full
 
-# Install with full profile (default)
-helm install oracle-cdc chart/ --create-namespace --namespace oracle-cdc
-
-# Or install with olr-only profile
-helm install oracle-cdc chart/ --create-namespace --namespace oracle-cdc --set mode=olr-only
+# Or OLR-only
+make up-olr
 ```
 
 ### Step 1.2: Wait for All Pods to be Ready
@@ -371,16 +405,10 @@ echo "Debezium is streaming"
 ### Step 2.5: Run HammerDB Benchmark
 
 ```bash
-# Record start time
-mkdir -p output/hammerdb
-date -u +%Y-%m-%dT%H:%M:%SZ > output/hammerdb/RUN_START_TIME.txt
-
-# Run benchmark
-kubectl exec -n oracle-cdc deployment/oracle-cdc-hammerdb -- /scripts/entrypoint.sh run
-
-# Record end time
-date -u +%Y-%m-%dT%H:%M:%SZ > output/hammerdb/RUN_END_TIME.txt
+make run-bench
 ```
+
+This automatically records start/end timestamps and saves logs to `output/hammerdb/`.
 
 ---
 
@@ -433,44 +461,40 @@ pip install -r scripts/report-generator/requirements.txt
 
 ### Generate Report
 
-Use the `--k8s` flag to query Prometheus via kubectl:
+```bash
+make report
+```
+
+This automatically reads timestamps from `output/hammerdb/` and generates an HTML report.
+
+### Manual Report Generation
+
+For custom time ranges or options:
 
 ```bash
 START=$(cat output/hammerdb/RUN_START_TIME.txt)
 END=$(cat output/hammerdb/RUN_END_TIME.txt)
 REPORT_DIR="reports/performance/$(date +%Y%m%d_%H%M)"
 
-python3 scripts/report-generator/generate_report.py \
+python3 scripts/report-generator/k8s_report.py \
     --start "$START" \
     --end "$END" \
-    --containers oracle,olr,debezium,kafka \
-    --rate-of 'dml_ops{filter="out"}' \
-    --rate-of 'oracledb_dml_redo_entries' \
-    --rate-of 'oracledb_dml_redo_bytes' \
-    --total-of 'bytes_sent' \
+    --containers oracle,olr,debezium,kafka,kafka-consumer \
+    --namespace oracle-cdc \
     --title "Full Pipeline Performance Test (K8s)" \
-    --output "$REPORT_DIR/charts.html" \
-    --k8s
+    --output "$REPORT_DIR/report.html"
 ```
-
-### Kubernetes-Specific CLI Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--k8s` | Enable Kubernetes mode (use kubectl) | `false` |
-| `--k8s-namespace` | Kubernetes namespace | `oracle-cdc` |
-| `--k8s-deployment` | Deployment to exec into for queries | `oracle-cdc-hammerdb` |
 
 ---
 
 ## Part 5: Cleanup (Kubernetes)
 
 ```bash
-# Uninstall the Helm release
-helm uninstall oracle-cdc -n oracle-cdc
+# Stop pods (preserves PVCs)
+make down
 
-# Delete the namespace (removes PVCs)
-kubectl delete namespace oracle-cdc
+# Clean everything including PVCs
+make clean
 ```
 
 ---
