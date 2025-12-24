@@ -2,6 +2,17 @@
 
 This guide covers how to run HammerDB stress tests and generate performance reports.
 
+## Deployment Options
+
+| Platform | Description |
+|----------|-------------|
+| **Docker Compose** | Local development, quick testing |
+| **Kubernetes** | Production-like environment, uses Helm chart |
+
+---
+
+# Docker Compose
+
 ## Makefile Targets
 
 | Target | Description |
@@ -254,7 +265,215 @@ python3 scripts/report-generator/generate_report.py \
     --output reports/performance/$(date +%Y%m%d_%H%M)/charts.html
 ```
 
-#### CLI Options
+---
+
+# Kubernetes (Helm Chart)
+
+## Prerequisites
+
+- Kubernetes cluster with kubectl configured
+- Helm 3.x installed
+- Storage class available for PVCs (e.g., `ebs-gp3` on AWS)
+
+## Part 1: Deploy the Stack
+
+### Step 1.1: Install the Helm Chart
+
+```bash
+# Update dependencies
+helm dependency update chart/
+
+# Install with full profile (default)
+helm install oracle-cdc chart/ --create-namespace --namespace oracle-cdc
+
+# Or install with olr-only profile
+helm install oracle-cdc chart/ --create-namespace --namespace oracle-cdc --set mode=olr-only
+```
+
+### Step 1.2: Wait for All Pods to be Ready
+
+```bash
+kubectl get pods -n oracle-cdc -w
+```
+
+Wait until all pods show `Running` status and are ready (1/1 or 2/2).
+
+### Step 1.3: Wait for Oracle Setup to Complete
+
+```bash
+until kubectl exec -n oracle-cdc deployment/oracle-cdc-oracle -- ls /opt/oracle/oradata/dbinit 2>/dev/null; do
+  echo "Waiting for Oracle setup..."
+  sleep 10
+done
+echo "Oracle setup complete"
+```
+
+### Step 1.4: Wait for Debezium Initial Snapshot (Full Profile Only)
+
+```bash
+until kubectl logs -n oracle-cdc deployment/oracle-cdc-debezium -c debezium 2>&1 | grep -q "Starting streaming"; do
+  echo "Waiting for Debezium snapshot..."
+  sleep 10
+done
+echo "Debezium is streaming"
+```
+
+---
+
+## Part 2: Build TPCC Schema and Run Benchmark
+
+### Step 2.1: Build TPCC Schema
+
+```bash
+kubectl exec -n oracle-cdc deployment/oracle-cdc-hammerdb -- /scripts/entrypoint.sh build
+```
+
+### Step 2.2: Enable Supplemental Logging for TPCC Tables
+
+```bash
+kubectl exec -n oracle-cdc deployment/oracle-cdc-oracle -- sqlplus -S / as sysdba <<'EOF'
+ALTER SESSION SET CONTAINER = FREEPDB1;
+ALTER TABLE TPCC.CUSTOMER ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.DISTRICT ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.HISTORY ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.ITEM ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.NEW_ORDER ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.ORDERS ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.ORDER_LINE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.STOCK ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE TPCC.WAREHOUSE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER SESSION SET CONTAINER = CDB$ROOT;
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+EXIT;
+EOF
+```
+
+### Step 2.3: Restart OLR and Debezium to Pick Up TPCC Tables
+
+```bash
+kubectl rollout restart deployment/oracle-cdc-olr deployment/oracle-cdc-debezium -n oracle-cdc
+kubectl rollout status deployment/oracle-cdc-olr -n oracle-cdc --timeout=120s
+kubectl rollout status deployment/oracle-cdc-debezium -n oracle-cdc --timeout=120s
+```
+
+### Step 2.4: Wait for Debezium to Start Streaming Again
+
+```bash
+until kubectl logs -n oracle-cdc deployment/oracle-cdc-debezium -c debezium 2>&1 | grep -q "Starting streaming"; do
+  echo "Waiting for Debezium..."
+  sleep 10
+done
+echo "Debezium is streaming"
+```
+
+### Step 2.5: Run HammerDB Benchmark
+
+```bash
+# Record start time
+mkdir -p output/hammerdb
+date -u +%Y-%m-%dT%H:%M:%SZ > output/hammerdb/RUN_START_TIME.txt
+
+# Run benchmark
+kubectl exec -n oracle-cdc deployment/oracle-cdc-hammerdb -- /scripts/entrypoint.sh run
+
+# Record end time
+date -u +%Y-%m-%dT%H:%M:%SZ > output/hammerdb/RUN_END_TIME.txt
+```
+
+---
+
+## Part 3: Monitoring (Kubernetes)
+
+### Check Pod Status
+
+```bash
+kubectl get pods -n oracle-cdc
+```
+
+### View Logs
+
+```bash
+# Oracle logs
+kubectl logs -n oracle-cdc deployment/oracle-cdc-oracle -f
+
+# OLR logs
+kubectl logs -n oracle-cdc deployment/oracle-cdc-olr -f
+
+# Debezium logs
+kubectl logs -n oracle-cdc deployment/oracle-cdc-debezium -c debezium -f
+
+# Kafka consumer logs
+kubectl logs -n oracle-cdc deployment/oracle-cdc-kafka-consumer -f
+```
+
+### Check CDC Events Captured
+
+```bash
+kubectl exec -n oracle-cdc deployment/oracle-cdc-kafka-consumer -- wc -l /app/output/events.json
+```
+
+### Check OLR Metrics
+
+```bash
+kubectl exec -n oracle-cdc deployment/oracle-cdc-hammerdb -- \
+  curl -s http://oracle-cdc-olr:9161/metrics | grep -E "dml_ops|bytes_sent"
+```
+
+---
+
+## Part 4: Generate Performance Report (Kubernetes)
+
+### Prerequisites
+
+```bash
+pip install -r scripts/report-generator/requirements.txt
+```
+
+### Generate Report
+
+Use the `--k8s` flag to query Prometheus via kubectl:
+
+```bash
+START=$(cat output/hammerdb/RUN_START_TIME.txt)
+END=$(cat output/hammerdb/RUN_END_TIME.txt)
+REPORT_DIR="reports/performance/$(date +%Y%m%d_%H%M)"
+
+python3 scripts/report-generator/generate_report.py \
+    --start "$START" \
+    --end "$END" \
+    --containers oracle,olr,debezium,kafka \
+    --rate-of 'dml_ops{filter="out"}' \
+    --rate-of 'oracledb_dml_redo_entries' \
+    --rate-of 'oracledb_dml_redo_bytes' \
+    --total-of 'bytes_sent' \
+    --title "Full Pipeline Performance Test (K8s)" \
+    --output "$REPORT_DIR/charts.html" \
+    --k8s
+```
+
+### Kubernetes-Specific CLI Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--k8s` | Enable Kubernetes mode (use kubectl) | `false` |
+| `--k8s-namespace` | Kubernetes namespace | `oracle-cdc` |
+| `--k8s-deployment` | Deployment to exec into for queries | `oracle-cdc-hammerdb` |
+
+---
+
+## Part 5: Cleanup (Kubernetes)
+
+```bash
+# Uninstall the Helm release
+helm uninstall oracle-cdc -n oracle-cdc
+
+# Delete the namespace (removes PVCs)
+kubectl delete namespace oracle-cdc
+```
+
+---
+
+# Report Generator CLI Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
@@ -266,8 +485,11 @@ python3 scripts/report-generator/generate_report.py \
 | `--title` | Report title | `"Performance Test - 60 VUs"` |
 | `--output` | Output HTML file path | `reports/test/charts.html` |
 | `--step` | Query step in seconds (default: 30) | `60` |
+| `--k8s` | Use kubectl instead of docker compose | - |
+| `--k8s-namespace` | Kubernetes namespace | `oracle-cdc` |
+| `--k8s-deployment` | Deployment for kubectl exec | `oracle-cdc-hammerdb` |
 
-The script queries Prometheus via `docker compose exec` and generates an HTML report with:
+The script queries Prometheus and generates an HTML report with:
 - Summary table (min/avg/max/total for each metric)
 - CPU usage chart (per container)
 - Memory usage chart (per container)
@@ -276,9 +498,9 @@ The script queries Prometheus via `docker compose exec` and generates an HTML re
 
 ---
 
-## Reference: Available Metrics
+# Reference: Available Metrics
 
-### OLR Metrics
+## OLR Metrics
 
 Use with `--rate-of` or `--total-of`:
 
@@ -297,7 +519,7 @@ Use with `--rate-of` or `--total-of`:
 - `type`: `insert`, `update`, `delete`, `commit`, `rollback`
 - `table`: `CUSTOMER`, `ORDERS`, `STOCK`, etc.
 
-### Oracle Exporter Metrics
+## Oracle Exporter Metrics
 
 | Metric | Description |
 |--------|-------------|
@@ -323,16 +545,16 @@ rate(oracledb_activity_user_commits[1m])
 
 ---
 
-## Expected Results
+# Expected Results
 
-### OLR-Only (4 VUs, 10 warehouses, 5 min duration)
+## OLR-Only (4 VUs, 10 warehouses, 5 min duration)
 
 | Metric | Value |
 |--------|-------|
 | Oracle Peak CPU | ~160% (of 200% Free limit) |
 | OLR Memory | ~2 GiB |
 
-### Full Profile (4 VUs, 10 warehouses, 5 min duration)
+## Full Profile (4 VUs, 10 warehouses, 5 min duration)
 
 | Metric | Value |
 |--------|-------|
@@ -343,12 +565,12 @@ rate(oracledb_activity_user_commits[1m])
 
 ---
 
-## Notes
+# Notes
 
 - **Do NOT count events.json lines** for throughput - use Prometheus metrics instead
 - **Oracle Free limits**: 2 cores (200% max CPU), 2 GB SGA
 - **OLR processes in bursts**: Throughput spikes when redo logs are archived
 
-## See Also
+# See Also
 
 - [HOWTO_HAMMERDB.md](HOWTO_HAMMERDB.md) - HammerDB commands, web service, REST API

@@ -48,10 +48,14 @@ class ReportConfig:
     total_of_metrics: list[str] = field(default_factory=list)  # e.g., ['bytes_sent']
     title: str = "Performance Test Report"
     docker_service: str = "hammerdb"  # Service to exec into for queries
+    # Kubernetes mode settings
+    k8s_mode: bool = False
+    k8s_namespace: str = "oracle-cdc"
+    k8s_deployment: str = "oracle-cdc-hammerdb"
 
 
 class QueryExecutor:
-    """Executes queries via docker compose exec."""
+    """Executes queries via docker compose exec or kubectl exec."""
 
     def __init__(self, config: ReportConfig):
         self.config = config
@@ -82,7 +86,16 @@ class QueryExecutor:
         url = f"{self.config.prometheus_url}{endpoint}?{query_string}"
 
         curl_cmd = f"curl -s '{url}'"
-        cmd = ["docker", "compose", "exec", "-T", self.config.docker_service, "sh", "-c", curl_cmd]
+
+        # Use kubectl if k8s_mode is enabled, otherwise use docker compose
+        if getattr(self.config, 'k8s_mode', False):
+            cmd = [
+                "kubectl", "exec", "-n", self.config.k8s_namespace,
+                f"deployment/{self.config.k8s_deployment}", "--",
+                "sh", "-c", curl_cmd
+            ]
+        else:
+            cmd = ["docker", "compose", "exec", "-T", self.config.docker_service, "sh", "-c", curl_cmd]
 
         output = self._run_command(cmd)
         if not output:
@@ -164,7 +177,11 @@ class ReportGenerator:
 
     def get_container_cpu(self, container_name: str) -> Optional[MetricSeries]:
         """Get CPU usage percentage for a container."""
-        query = f'sum(rate(container_cpu_usage_seconds_total{{name="{container_name}"}}[30s]))*100'
+        if self.config.k8s_mode:
+            # For k8s, use pod name pattern matching
+            query = f'sum(rate(container_cpu_usage_seconds_total{{namespace="{self.config.k8s_namespace}", pod=~"oracle-cdc-{container_name}.*", container!=""}}[30s]))*100'
+        else:
+            query = f'sum(rate(container_cpu_usage_seconds_total{{name="{container_name}"}}[30s]))*100'
         series_list = self.client.query_range(query, self.start_ts, self.end_ts, self.config.step)
 
         if series_list:
@@ -175,7 +192,10 @@ class ReportGenerator:
 
     def get_container_memory(self, container_name: str) -> Optional[MetricSeries]:
         """Get memory usage in MB for a container."""
-        query = f'sum(container_memory_usage_bytes{{name="{container_name}"}})/1024/1024'
+        if self.config.k8s_mode:
+            query = f'sum(container_memory_usage_bytes{{namespace="{self.config.k8s_namespace}", pod=~"oracle-cdc-{container_name}.*", container!=""}})/1024/1024'
+        else:
+            query = f'sum(container_memory_usage_bytes{{name="{container_name}"}})/1024/1024'
         series_list = self.client.query_range(query, self.start_ts, self.end_ts, self.config.step)
 
         if series_list:
@@ -284,8 +304,11 @@ class ReportGenerator:
 
         # Get container metrics
         for container in self.config.containers:
-            # Normalize container name
-            if not container.startswith("oracle-cdc-test-"):
+            # Normalize container name based on mode
+            if self.config.k8s_mode:
+                # For k8s, just use the container name directly (get_container_* handles pod pattern)
+                container_full = container
+            elif not container.startswith("oracle-cdc-test-"):
                 container_full = f"oracle-cdc-test-{container}-1"
             else:
                 container_full = container
@@ -496,6 +519,10 @@ def parse_args():
     parser.add_argument("--title", default="Performance Test Report", help="Report title")
     parser.add_argument("--step", type=int, default=30, help="Query step in seconds")
     parser.add_argument("--service", default="hammerdb", help="Docker Compose service to exec into for queries")
+    # Kubernetes mode options
+    parser.add_argument("--k8s", action="store_true", help="Use kubectl instead of docker compose")
+    parser.add_argument("--k8s-namespace", default="oracle-cdc", help="Kubernetes namespace")
+    parser.add_argument("--k8s-deployment", default="oracle-cdc-hammerdb", help="Kubernetes deployment to exec into")
 
     return parser.parse_args()
 
@@ -507,16 +534,25 @@ def main():
     start_time = datetime.fromisoformat(args.start.replace("Z", "+00:00"))
     end_time = datetime.fromisoformat(args.end.replace("Z", "+00:00"))
 
+    # Set prometheus URL based on mode
+    if args.k8s:
+        prometheus_url = "http://oracle-cdc-kube-prometheus-prometheus:9090"
+    else:
+        prometheus_url = args.prometheus
+
     config = ReportConfig(
         start_time=start_time,
         end_time=end_time,
         step=args.step,
-        prometheus_url=args.prometheus,
+        prometheus_url=prometheus_url,
         containers=[c.strip() for c in args.containers.split(",")],
         rate_of_metrics=args.rate_of_metrics,
         total_of_metrics=args.total_of_metrics,
         title=args.title,
         docker_service=args.service,
+        k8s_mode=args.k8s,
+        k8s_namespace=args.k8s_namespace,
+        k8s_deployment=args.k8s_deployment,
     )
 
     generator = ReportGenerator(config)
