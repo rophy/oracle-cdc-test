@@ -1,0 +1,301 @@
+-- XID Overlap Analysis Script
+-- Analyzes XIDs with multiple STARTs to find true overlaps vs normal reuse
+--
+-- Usage (Docker):
+--   docker compose exec -T oracle sqlplus -S sys/OraclePwd123@//localhost:1521/FREE as sysdba < config/oracle/analyze-xid-lifo.sql
+--
+-- Usage (Kubernetes):
+--   kubectl exec -i oracle-0 -- sqlplus -S sys/OraclePwd123@//localhost:1521/FREE as sysdba < config/oracle/analyze-xid-lifo.sql
+
+SET LINESIZE 200
+SET PAGESIZE 10000
+SET FEEDBACK OFF
+SET HEADING ON
+SET SERVEROUTPUT ON
+COLUMN XID FORMAT A15
+COLUMN CATEGORY FORMAT A20
+COLUMN ORDER_PATTERN FORMAT A20
+COLUMN START1_SCN FORMAT 9999999999
+COLUMN START2_SCN FORMAT 9999999999
+COLUMN END1_SCN FORMAT 9999999999
+COLUMN END2_SCN FORMAT 9999999999
+
+-- Dynamically add all available archive logs
+DECLARE
+    v_first BOOLEAN := TRUE;
+    v_count NUMBER := 0;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Adding archive logs...');
+    FOR rec IN (
+        SELECT NAME
+        FROM V$ARCHIVED_LOG
+        WHERE NAME IS NOT NULL
+        AND DELETED = 'NO'
+        ORDER BY SEQUENCE#
+    ) LOOP
+        BEGIN
+            IF v_first THEN
+                DBMS_LOGMNR.ADD_LOGFILE(LOGFILENAME => rec.NAME, OPTIONS => DBMS_LOGMNR.NEW);
+                v_first := FALSE;
+            ELSE
+                DBMS_LOGMNR.ADD_LOGFILE(LOGFILENAME => rec.NAME, OPTIONS => DBMS_LOGMNR.ADDFILE);
+            END IF;
+            v_count := v_count + 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Skipped: ' || rec.NAME || ' - ' || SQLERRM);
+        END;
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Added ' || v_count || ' archive logs.');
+END;
+/
+
+BEGIN
+    DBMS_LOGMNR.START_LOGMNR(OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG);
+END;
+/
+
+PROMPT
+PROMPT ============================================================
+PROMPT XID OVERLAP ANALYSIS REPORT
+PROMPT ============================================================
+PROMPT
+PROMPT Categories:
+PROMPT   NORMAL_REUSE  - S1 < C1 < S2 < C2 (first completes before second starts)
+PROMPT   OVERLAP_LIFO  - S1 < S2 < C1 < C2 (borrower pattern, LIFO order)
+PROMPT   OVERLAP_OTHER - S1 < S2 but not LIFO (unexpected)
+PROMPT   INCOMPLETE    - Missing commit/rollback in available logs
+PROMPT
+
+-- Main analysis
+WITH xid_events AS (
+    SELECT
+        XIDUSN, XIDSLT, XIDSQN,
+        OPERATION,
+        SCN,
+        ROW_NUMBER() OVER (PARTITION BY XIDUSN, XIDSLT, XIDSQN, OPERATION ORDER BY SCN) AS op_seq
+    FROM V$LOGMNR_CONTENTS
+    WHERE OPERATION IN ('START', 'COMMIT', 'ROLLBACK')
+),
+xid_timeline AS (
+    SELECT
+        XIDUSN || '.' || XIDSLT || '.' || XIDSQN AS XID,
+        XIDUSN, XIDSLT, XIDSQN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 1 THEN SCN END) AS START1_SCN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 2 THEN SCN END) AS START2_SCN,
+        -- END1 = first COMMIT or ROLLBACK
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN SCN END)
+        ) AS END1_SCN,
+        -- END2 = second COMMIT or ROLLBACK
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN SCN END)
+        ) AS END2_SCN,
+        MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN 'C' END) AS END1_TYPE,
+        MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN 'C' END) AS END2_TYPE,
+        MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN 'R' END) AS END1_R,
+        MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN 'R' END) AS END2_R,
+        COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) AS start_count
+    FROM xid_events
+    GROUP BY XIDUSN, XIDSLT, XIDSQN
+    HAVING COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) > 1
+),
+xid_categorized AS (
+    SELECT
+        XID,
+        XIDUSN, XIDSLT, XIDSQN,
+        START1_SCN,
+        START2_SCN,
+        END1_SCN,
+        END2_SCN,
+        CASE
+            WHEN END1_SCN IS NULL OR END2_SCN IS NULL THEN 'INCOMPLETE'
+            WHEN START2_SCN > END1_SCN THEN 'NORMAL_REUSE'
+            WHEN START1_SCN < START2_SCN AND START2_SCN < END1_SCN AND END1_SCN < END2_SCN THEN 'OVERLAP_LIFO'
+            ELSE 'OVERLAP_OTHER'
+        END AS CATEGORY,
+        CASE
+            WHEN END1_SCN IS NULL OR END2_SCN IS NULL THEN 'S1-S2-?'
+            WHEN START2_SCN > END1_SCN THEN 'S1-E1-S2-E2'
+            WHEN START1_SCN < START2_SCN AND START2_SCN < END1_SCN AND END1_SCN < END2_SCN THEN 'S1-S2-E1-E2'
+            ELSE 'OTHER'
+        END AS ORDER_PATTERN
+    FROM xid_timeline
+)
+SELECT * FROM xid_categorized WHERE 1=0;  -- Just define the structure
+
+PROMPT === SUMMARY BY CATEGORY ===
+WITH xid_events AS (
+    SELECT
+        XIDUSN, XIDSLT, XIDSQN,
+        OPERATION,
+        SCN,
+        ROW_NUMBER() OVER (PARTITION BY XIDUSN, XIDSLT, XIDSQN, OPERATION ORDER BY SCN) AS op_seq
+    FROM V$LOGMNR_CONTENTS
+    WHERE OPERATION IN ('START', 'COMMIT', 'ROLLBACK')
+),
+xid_timeline AS (
+    SELECT
+        XIDUSN || '.' || XIDSLT || '.' || XIDSQN AS XID,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 1 THEN SCN END) AS START1_SCN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 2 THEN SCN END) AS START2_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN SCN END)
+        ) AS END1_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN SCN END)
+        ) AS END2_SCN
+    FROM xid_events
+    GROUP BY XIDUSN, XIDSLT, XIDSQN
+    HAVING COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) > 1
+),
+xid_categorized AS (
+    SELECT
+        XID,
+        CASE
+            WHEN END1_SCN IS NULL OR END2_SCN IS NULL THEN 'INCOMPLETE'
+            WHEN START2_SCN > END1_SCN THEN 'NORMAL_REUSE'
+            WHEN START1_SCN < START2_SCN AND START2_SCN < END1_SCN AND END1_SCN < END2_SCN THEN 'OVERLAP_LIFO'
+            ELSE 'OVERLAP_OTHER'
+        END AS CATEGORY
+    FROM xid_timeline
+)
+SELECT CATEGORY, COUNT(*) AS COUNT,
+       ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS PCT
+FROM xid_categorized
+GROUP BY CATEGORY
+ORDER BY COUNT DESC;
+
+PROMPT
+PROMPT === TRUE OVERLAPS (LIFO pattern - borrower transactions) ===
+WITH xid_events AS (
+    SELECT
+        XIDUSN, XIDSLT, XIDSQN,
+        OPERATION,
+        SCN,
+        ROW_NUMBER() OVER (PARTITION BY XIDUSN, XIDSLT, XIDSQN, OPERATION ORDER BY SCN) AS op_seq
+    FROM V$LOGMNR_CONTENTS
+    WHERE OPERATION IN ('START', 'COMMIT', 'ROLLBACK')
+),
+xid_timeline AS (
+    SELECT
+        XIDUSN || '.' || XIDSLT || '.' || XIDSQN AS XID,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 1 THEN SCN END) AS START1_SCN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 2 THEN SCN END) AS START2_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN SCN END)
+        ) AS END1_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN SCN END)
+        ) AS END2_SCN
+    FROM xid_events
+    GROUP BY XIDUSN, XIDSLT, XIDSQN
+    HAVING COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) > 1
+)
+SELECT
+    XID,
+    START1_SCN,
+    START2_SCN,
+    END1_SCN,
+    END2_SCN,
+    END1_SCN - START2_SCN AS BORROWER_SPAN,
+    END2_SCN - START1_SCN AS ORIGINAL_SPAN
+FROM xid_timeline
+WHERE END1_SCN IS NOT NULL AND END2_SCN IS NOT NULL
+AND START1_SCN < START2_SCN AND START2_SCN < END1_SCN AND END1_SCN < END2_SCN
+ORDER BY XID;
+
+PROMPT
+PROMPT === UNEXPECTED OVERLAPS (non-LIFO, if any) ===
+WITH xid_events AS (
+    SELECT
+        XIDUSN, XIDSLT, XIDSQN,
+        OPERATION,
+        SCN,
+        ROW_NUMBER() OVER (PARTITION BY XIDUSN, XIDSLT, XIDSQN, OPERATION ORDER BY SCN) AS op_seq
+    FROM V$LOGMNR_CONTENTS
+    WHERE OPERATION IN ('START', 'COMMIT', 'ROLLBACK')
+),
+xid_timeline AS (
+    SELECT
+        XIDUSN || '.' || XIDSLT || '.' || XIDSQN AS XID,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 1 THEN SCN END) AS START1_SCN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 2 THEN SCN END) AS START2_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN SCN END)
+        ) AS END1_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN SCN END)
+        ) AS END2_SCN
+    FROM xid_events
+    GROUP BY XIDUSN, XIDSLT, XIDSQN
+    HAVING COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) > 1
+)
+SELECT
+    XID,
+    START1_SCN,
+    START2_SCN,
+    END1_SCN,
+    END2_SCN,
+    'S1<S2<E1 but NOT LIFO' AS NOTE
+FROM xid_timeline
+WHERE END1_SCN IS NOT NULL AND END2_SCN IS NOT NULL
+AND START2_SCN < END1_SCN  -- Overlapping
+AND NOT (START1_SCN < START2_SCN AND START2_SCN < END1_SCN AND END1_SCN < END2_SCN)  -- Not LIFO
+ORDER BY XID;
+
+PROMPT
+PROMPT === SAMPLE NORMAL REUSE (first 10) ===
+WITH xid_events AS (
+    SELECT
+        XIDUSN, XIDSLT, XIDSQN,
+        OPERATION,
+        SCN,
+        ROW_NUMBER() OVER (PARTITION BY XIDUSN, XIDSLT, XIDSQN, OPERATION ORDER BY SCN) AS op_seq
+    FROM V$LOGMNR_CONTENTS
+    WHERE OPERATION IN ('START', 'COMMIT', 'ROLLBACK')
+),
+xid_timeline AS (
+    SELECT
+        XIDUSN || '.' || XIDSLT || '.' || XIDSQN AS XID,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 1 THEN SCN END) AS START1_SCN,
+        MAX(CASE WHEN OPERATION = 'START' AND op_seq = 2 THEN SCN END) AS START2_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 1 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 1 THEN SCN END)
+        ) AS END1_SCN,
+        COALESCE(
+            MAX(CASE WHEN OPERATION = 'COMMIT' AND op_seq = 2 THEN SCN END),
+            MAX(CASE WHEN OPERATION = 'ROLLBACK' AND op_seq = 2 THEN SCN END)
+        ) AS END2_SCN
+    FROM xid_events
+    GROUP BY XIDUSN, XIDSLT, XIDSQN
+    HAVING COUNT(CASE WHEN OPERATION = 'START' THEN 1 END) > 1
+)
+SELECT
+    XID,
+    START1_SCN,
+    END1_SCN,
+    START2_SCN,
+    END2_SCN,
+    START2_SCN - END1_SCN AS GAP_BETWEEN
+FROM xid_timeline
+WHERE END1_SCN IS NOT NULL AND END2_SCN IS NOT NULL
+AND START2_SCN > END1_SCN
+AND ROWNUM <= 10
+ORDER BY XID;
+
+EXEC DBMS_LOGMNR.END_LOGMNR();
+
+PROMPT
+PROMPT ============================================================
+PROMPT END OF REPORT
+PROMPT ============================================================
