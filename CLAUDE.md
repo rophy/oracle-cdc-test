@@ -63,32 +63,24 @@ The stack uses profiles to support different CDC architectures:
 | `full` | Full CDC pipeline | + olr-dbz, kafka, kafka-consumer, dbz, jmx-exporter, kafka-exporter |
 | `clean` | Cleanup utility | clean (manual run) |
 
-## Docker Compose Commands
+## Makefile Commands
 
-**IMPORTANT: ALWAYS use `docker compose` to manage containers. NEVER use `docker` commands directly (e.g., `docker exec`, `docker logs`, `docker rm`). Use `docker compose exec`, `docker compose logs`, etc. instead.**
+Use `make` targets instead of raw docker/kubectl commands:
 
 ```bash
-# Start base stack only (Oracle + monitoring)
-docker compose up -d
+export DEPLOY_MODE=docker  # or k8s
+export PROFILE=full        # or olr-only
 
-# OLR direct to file (lightweight, no Debezium/Kafka)
-docker compose --profile=olr-only up -d
-
-# Full CDC pipeline (OLR → Debezium → Kafka)
-docker compose --profile=full up -d
-
-# HammerDB operations (exec into running container)
-docker compose exec hammerdb /scripts/entrypoint.sh build   # Create TPCC schema
-docker compose exec hammerdb /scripts/entrypoint.sh run     # Run workload
-docker compose exec hammerdb /scripts/entrypoint.sh delete  # Drop TPCC schema
-
-# Clean restart (includes output file cleanup)
-docker compose down -v
-docker compose --profile=clean run --rm clean
-docker compose --profile=olr-only up -d   # or --profile=full
+make clean      # Remove previous run
+make up         # Start stack
+make build      # Build TPCC schema and configure CDC
+make run-bench  # Run benchmark
+make report     # Generate report
 ```
 
-**HammerDB output**: Logs are saved to `./output/hammerdb/` with timestamped filenames (e.g., `run_20251220_071230.log`).
+**HammerDB output**: Logs are saved to `./output/hammerdb/` with timestamped filenames.
+
+**Note**: Use `docker compose` (not `docker`) for any manual container operations.
 
 ## OpenLogReplicator Configuration
 
@@ -165,6 +157,4 @@ docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server loca
 
 For detailed procedures, see:
 - `HOWTO_HAMMERDB.md` - HammerDB commands, web service, REST API
-- `HOWTO_PERF.md` - Performance testing overview and metrics reference
-- `HOWTO_PERF_DOCKER.md` - Docker Compose performance testing
-- `HOWTO_PERF_K8S.md` - Kubernetes performance testing
+- `HOWTO_PERF.md` - Performance testing and metrics reference

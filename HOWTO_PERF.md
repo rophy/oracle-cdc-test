@@ -1,114 +1,94 @@
-# Performance Testing Guide
-
-This guide covers how to run HammerDB stress tests and generate performance reports.
-
-## Platform-Specific Guides
-
-| Platform | Guide | Description |
-|----------|-------|-------------|
-| **Docker Compose** | [HOWTO_PERF_DOCKER.md](HOWTO_PERF_DOCKER.md) | Local development, quick testing |
-| **Kubernetes** | [HOWTO_PERF_K8S.md](HOWTO_PERF_K8S.md) | Production-like environment, uses Helm chart |
+# Performance Testing
 
 ## Quick Start
 
 ```bash
-# Set deployment mode (required)
-export DEPLOY_MODE=docker  # or: export DEPLOY_MODE=k8s
+export DEPLOY_MODE=docker  # or k8s
+export PROFILE=full        # or olr-only
 
-# Deploy full pipeline
-make up-full
-
-# Wait for Oracle, then build TPCC schema
-# (see platform-specific guides for details)
-
-# Run benchmark
-make run-bench
-
-# Generate report
-make report
+make clean      # Remove previous run
+make up         # Start stack
+make build      # Build TPCC schema and configure CDC
+make run-bench  # Run benchmark
+make report     # Generate report
 ```
-
-## Makefile Targets
-
-All targets require `DEPLOY_MODE` environment variable to be set.
-
-| Target | Description |
-|--------|-------------|
-| `make up` | Start base stack (Oracle + monitoring) |
-| `make up-olr` | Start with OLR direct to file |
-| `make up-full` | Start full pipeline (OLR -> Debezium -> Kafka) |
-| `make down` | Stop all containers/pods (preserves volumes/PVCs) |
-| `make clean` | Clean output files and remove everything including volumes/PVCs |
-| `make run-bench` | Run HammerDB benchmark with timestamp tracking |
-| `make report` | Generate performance report from last benchmark run |
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DEPLOY_MODE` | Yes | `docker` or `k8s` |
-| `K8S_NAMESPACE` | No | Kubernetes namespace (default: `oracle-cdc`) |
-| `HELM_RELEASE` | No | Helm release name (default: `oracle-cdc`) |
+| Variable | Values | Required | Description |
+|----------|--------|----------|-------------|
+| `DEPLOY_MODE` | `docker`, `k8s` | Yes | Deployment platform |
+| `PROFILE` | `full`, `olr-only` | Yes | CDC pipeline mode |
+| `K8S_NAMESPACE` | any | No | Kubernetes namespace (default: `oracle-cdc`) |
+| `HELM_RELEASE` | any | No | Helm release name (default: `oracle-cdc`) |
+
+## Profiles
+
+| Profile | Description |
+|---------|-------------|
+| `olr-only` | OLR writes CDC events directly to file (lightweight) |
+| `full` | Full pipeline: OLR → Debezium → Kafka → Consumer |
+
+## What Each Step Does
+
+| Step | Description |
+|------|-------------|
+| `make clean` | Stop containers/pods, remove volumes/PVCs and output files |
+| `make up` | Start the stack based on `PROFILE` |
+| `make build` | Wait for Oracle, build TPCC schema, enable supplemental logging, restart CDC |
+| `make run-bench` | Run HammerDB workload, record timestamps |
+| `make report` | Generate HTML report from Prometheus metrics |
+
+## Monitoring
+
+### Docker
+
+```bash
+docker compose logs -f olr-file          # OLR logs (olr-only)
+docker compose logs -f dbz olr-dbz       # CDC logs (full)
+tail -f ./output/olr/events.json         # CDC events (olr-only)
+```
+
+### Kubernetes
+
+```bash
+kubectl logs -n oracle-cdc deployment/oracle-cdc-olr -f
+kubectl logs -n oracle-cdc deployment/oracle-cdc-debezium -c debezium -f
+```
 
 ---
 
-# Reference: Available Metrics
+# Metrics Reference
 
 ## OLR Metrics
-
-Use with `--rate-of` or `--total-of`:
 
 | Metric | Description |
 |--------|-------------|
 | `dml_ops{filter="out"}` | DML operations output (by table, type) |
-| `dml_ops{filter="skip"}` | Skipped operations |
 | `bytes_parsed` | Bytes of redo log parsed |
 | `bytes_sent` | Bytes sent to output |
 | `messages_sent` | Messages sent |
-| `checkpoints` | Checkpoint operations |
-| `log_switches` | Redo log switches |
-
-**Label filters for `dml_ops`:**
-- `filter`: `out`, `skip`, `partial`
-- `type`: `insert`, `update`, `delete`, `commit`, `rollback`
-- `table`: `CUSTOMER`, `ORDERS`, `STOCK`, etc.
 
 ## Oracle Exporter Metrics
 
 | Metric | Description |
 |--------|-------------|
-| `oracledb_dml_redo_entries` | Redo log entries (counter, correlates with DML ops) |
-| `oracledb_dml_redo_bytes` | Total redo data generated (counter, bytes) |
-| `oracledb_dml_block_changes` | Database block modifications (counter) |
-| `oracledb_dml_rows_scanned` | Rows read by table scans (counter) |
-| `oracledb_activity_user_commits` | Commit count (counter) |
-| `oracledb_activity_execute_count` | SQL executions (counter) |
-| `oracledb_wait_time_*` | Wait time by class (user_io, commit, concurrency, etc.) |
-
-**Example Prometheus queries:**
-```bash
-# Redo entries per second (proxy for DML rate)
-rate(oracledb_dml_redo_entries[1m])
-
-# Redo throughput in KB/sec
-rate(oracledb_dml_redo_bytes[1m]) / 1024
-
-# Commits per second
-rate(oracledb_activity_user_commits[1m])
-```
+| `oracledb_dml_redo_entries` | Redo log entries (proxy for DML rate) |
+| `oracledb_dml_redo_bytes` | Total redo data generated |
+| `oracledb_activity_user_commits` | Commit count |
 
 ---
 
 # Expected Results
 
-## OLR-Only (4 VUs, 10 warehouses, 5 min duration)
+## OLR-Only (4 VUs, 10 warehouses, 5 min)
 
 | Metric | Value |
 |--------|-------|
 | Oracle Peak CPU | ~160% (of 200% Free limit) |
 | OLR Memory | ~2 GiB |
 
-## Full Profile (4 VUs, 10 warehouses, 5 min duration)
+## Full Profile (4 VUs, 10 warehouses, 5 min)
 
 | Metric | Value |
 |--------|-------|
@@ -118,12 +98,6 @@ rate(oracledb_activity_user_commits[1m])
 | Debezium Memory | ~630 MiB |
 
 ---
-
-# Notes
-
-- **Do NOT count events.json lines** for throughput - use Prometheus metrics instead
-- **Oracle Free limits**: 2 cores (200% max CPU), 2 GB SGA
-- **OLR processes in bursts**: Throughput spikes when redo logs are archived
 
 # See Also
 
