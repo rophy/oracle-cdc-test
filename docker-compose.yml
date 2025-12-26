@@ -30,7 +30,7 @@ services:
           set -xe
           chown -R 54321:54321 /opt/oracle/oradata
           chown -R 1000:1000 /output/hammerdb
-          mkdir -p /olr/checkpoint /olr/swap && chown -R 1000:1000 /olr
+          mkdir -p /olr/checkpoint /olr/swap /olr/output && chown -R 1000:1000 /olr
     volumes:
       - oracle-oradata:/opt/oracle/oradata
       - hammerdb-output:/output/hammerdb
