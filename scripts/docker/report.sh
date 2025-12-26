@@ -44,17 +44,39 @@ echo "End:   $END_TIME"
 echo "Output: $REPORT_DIR/report.html"
 echo "=========================================="
 
-python3 "$REPORT_GEN" \
-    --start "$START_TIME" \
-    --end "$END_TIME" \
-    --containers "$CONTAINERS" \
-    --rate-of 'dml_ops{filter="out"}' \
-    --rate-of 'oracledb_dml_redo_entries' \
-    --rate-of 'oracledb_activity_user_commits' \
-    --total-of 'bytes_sent' \
-    --total-of 'messages_sent' \
-    --output "$REPORT_DIR/report.html" \
-    --title "Performance Test $(date +%Y-%m-%d) ($PROFILE)"
+# Common metrics for all profiles
+COMMON_METRICS=(
+    --rate-of 'oracledb_activity_user_commits'
+    --rate-of 'oracledb_dml_redo_entries'
+    --rate-of 'dml_ops{filter="out"}'
+    --rate-of 'messages_sent'
+)
+
+# Additional metrics for full profile
+FULL_METRICS=(
+    --rate-of 'debezium_oracle_streaming_total_captured_dml'
+    --rate-of 'kafka_topic_partition_current_offset{topic=~"oracle.*"}'
+    --rate-of 'kafka_consumergroup_current_offset{consumergroup="file-writer"}'
+)
+
+if [ "$PROFILE" = "full" ]; then
+    python3 "$REPORT_GEN" \
+        --start "$START_TIME" \
+        --end "$END_TIME" \
+        --containers "$CONTAINERS" \
+        "${COMMON_METRICS[@]}" \
+        "${FULL_METRICS[@]}" \
+        --output "$REPORT_DIR/report.html" \
+        --title "Performance Test $(date +%Y-%m-%d) ($PROFILE)"
+else
+    python3 "$REPORT_GEN" \
+        --start "$START_TIME" \
+        --end "$END_TIME" \
+        --containers "$CONTAINERS" \
+        "${COMMON_METRICS[@]}" \
+        --output "$REPORT_DIR/report.html" \
+        --title "Performance Test $(date +%Y-%m-%d) ($PROFILE)"
+fi
 
 echo "=========================================="
 echo "Report generated: $REPORT_DIR/report.html"

@@ -1,4 +1,5 @@
 # Deployment mode:
+#   base: Only Oracle, HammerDB, and monitoring (no CDC components)
 #   olr-only: OpenLogReplicator writes directly to file (no Kafka)
 #   full: OLR -> Debezium -> Kafka -> kafka-consumer
 mode: full

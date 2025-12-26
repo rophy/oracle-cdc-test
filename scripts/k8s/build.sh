@@ -1,34 +1,36 @@
 #!/bin/bash
-# Build TPCC schema and configure CDC in Kubernetes
-# Waits for Oracle, builds schema, enables supplemental logging, restarts CDC services
+# Build TPCC schema and start CDC components
+# Flow: Wait for Oracle -> Build schema -> Enable logging -> Start CDC
 set -e
 
 NAMESPACE="${K8S_NAMESPACE:-oracle-cdc}"
 RELEASE_NAME="${HELM_RELEASE:-oracle-cdc}"
 
-echo "=== Step 1/5: Waiting for Oracle setup ==="
+echo "=== Step 1/4: Waiting for Oracle setup ==="
+# Check Oracle pod is running
+if ! kubectl get pod -n "$NAMESPACE" -l app=${RELEASE_NAME}-oracle -o jsonpath='{.items[0].status.phase}' 2>/dev/null | grep -q "Running"; then
+    echo "ERROR: Oracle pod is not running. Run 'make up' first."
+    exit 1
+fi
+
+# Wait for Oracle setup with 150s timeout
+TIMEOUT=150
+ELAPSED=0
 until kubectl exec -n "$NAMESPACE" deployment/${RELEASE_NAME}-oracle -- ls /opt/oracle/oradata/dbinit 2>/dev/null; do
-    echo "  Waiting..."
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "ERROR: Timeout waiting for Oracle setup (${TIMEOUT}s)"
+        exit 1
+    fi
+    echo "  Waiting... (${ELAPSED}s/${TIMEOUT}s)"
     sleep 5
+    ELAPSED=$((ELAPSED + 5))
 done
 echo "  Oracle is ready"
 
-# For full profile: wait for Debezium initial snapshot
-if [ "$PROFILE" = "full" ]; then
-    echo "=== Step 2/5: Waiting for Debezium initial snapshot ==="
-    until kubectl logs -n "$NAMESPACE" deployment/${RELEASE_NAME}-debezium -c debezium 2>&1 | grep -q "Starting streaming"; do
-        echo "  Waiting..."
-        sleep 10
-    done
-    echo "  Debezium completed initial snapshot"
-else
-    echo "=== Step 2/5: Skipped (olr-only profile) ==="
-fi
-
-echo "=== Step 3/5: Building TPCC schema ==="
+echo "=== Step 2/4: Building TPCC schema ==="
 kubectl exec -n "$NAMESPACE" deployment/${RELEASE_NAME}-hammerdb -- /scripts/entrypoint.sh build
 
-echo "=== Step 4/5: Enabling supplemental logging ==="
+echo "=== Step 3/4: Enabling supplemental logging ==="
 kubectl exec -n "$NAMESPACE" deployment/${RELEASE_NAME}-oracle -- sqlplus -S / as sysdba <<'EOF'
 ALTER SESSION SET CONTAINER = FREEPDB1;
 ALTER TABLE TPCC.CUSTOMER ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
@@ -45,16 +47,26 @@ ALTER SYSTEM ARCHIVE LOG CURRENT;
 EXIT;
 EOF
 
-echo "=== Step 5/5: Restarting CDC services ==="
+echo "=== Step 4/4: Starting CDC components ==="
 if [ "$PROFILE" = "olr-only" ]; then
-    kubectl rollout restart deployment/${RELEASE_NAME}-olr -n "$NAMESPACE"
-    kubectl rollout status deployment/${RELEASE_NAME}-olr -n "$NAMESPACE" --timeout=120s
-    echo "  OLR restarted"
+    helm upgrade "$RELEASE_NAME" chart/ \
+        -n "$NAMESPACE" \
+        --set mode=olr-only
+
+    echo "  Waiting for OLR pod..."
+    kubectl wait --for=condition=ready pod -l app=${RELEASE_NAME}-olr -n "$NAMESPACE" --timeout=120s || true
+    echo "  OLR started"
 else
-    kubectl rollout restart deployment/${RELEASE_NAME}-olr deployment/${RELEASE_NAME}-debezium -n "$NAMESPACE"
-    kubectl rollout status deployment/${RELEASE_NAME}-olr -n "$NAMESPACE" --timeout=120s
-    kubectl rollout status deployment/${RELEASE_NAME}-debezium -n "$NAMESPACE" --timeout=120s
-    echo "  Waiting for Debezium snapshot..."
+    helm upgrade "$RELEASE_NAME" chart/ \
+        -n "$NAMESPACE" \
+        --set mode=full
+
+    echo "  Waiting for CDC pods..."
+    kubectl wait --for=condition=ready pod -l app=${RELEASE_NAME}-kafka -n "$NAMESPACE" --timeout=120s || true
+    kubectl wait --for=condition=ready pod -l app=${RELEASE_NAME}-olr -n "$NAMESPACE" --timeout=120s || true
+    kubectl wait --for=condition=ready pod -l app=${RELEASE_NAME}-debezium -n "$NAMESPACE" --timeout=120s || true
+
+    echo "  Waiting for Debezium streaming..."
     until kubectl logs -n "$NAMESPACE" deployment/${RELEASE_NAME}-debezium -c debezium 2>&1 | grep -q "Starting streaming"; do
         echo "  Waiting..."
         sleep 10

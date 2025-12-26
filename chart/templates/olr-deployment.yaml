@@ -1,3 +1,4 @@
+{{- if or (eq .Values.mode "full") (eq .Values.mode "olr-only") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -76,3 +77,4 @@ spec:
         - name: output
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-olr-output
+{{- end }}

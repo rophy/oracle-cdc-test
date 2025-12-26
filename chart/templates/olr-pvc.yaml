@@ -1,3 +1,4 @@
+{{- if or (eq .Values.mode "full") (eq .Values.mode "olr-only") }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -29,3 +30,4 @@ spec:
   {{- if .Values.olr.persistence.output.storageClass }}
   storageClassName: {{ .Values.olr.persistence.output.storageClass }}
   {{- end }}
+{{- end }}

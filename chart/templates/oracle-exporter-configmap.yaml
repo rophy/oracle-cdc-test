@@ -8,7 +8,7 @@ data:
   config.yaml: |
     databases:
       default:
-        url: {{ .Release.Name }}-oracle:1521/FREE
+        url: //{{ .Release.Name }}-oracle:1521/FREE
         username: c##dbzuser
         password: dbzpwd
         queryTimeout: 5
