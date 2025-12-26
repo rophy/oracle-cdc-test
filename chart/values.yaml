@@ -94,7 +94,7 @@ debezium:
   # CDC settings
   topicPrefix: "oracle"
   schemaIncludeList: "USR1,TPCC"
-  snapshotMode: "initial"
+  snapshotMode: "no_data"  # Skip initial data snapshot, only capture schema
 
 # HammerDB performance testing configuration
 hammerdb:

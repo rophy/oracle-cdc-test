@@ -1,9 +1,6 @@
 #!/bin/bash
-# Start stack based on PROFILE environment variable
+# Start base services (oracle, hammerdb, monitoring)
+# CDC components are started by build.sh after schema is created
 set -e
 
-if [ "$PROFILE" = "olr-only" ]; then
-    docker compose --profile=olr-only up -d
-else
-    docker compose --profile=full up -d
-fi
+docker compose up -d
