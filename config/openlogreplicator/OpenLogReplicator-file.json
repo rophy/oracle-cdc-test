@@ -34,7 +34,11 @@
       "memory": {
         "min-mb": 256,
         "max-mb": 8192,
-        "swap-path": "/output/swap"
+        "swap-path": "/olr/swap"
+      },
+      "state": {
+        "type": "disk",
+        "path": "/olr/checkpoint"
       },
       "filter": {
         "table": [
@@ -56,7 +60,7 @@
       "source": "FREE",
       "writer": {
         "type": "file",
-        "output": "/output/events.json",
+        "output": "/olr/output/events.json",
         "max-file-size": 0,
         "append": 1
       }

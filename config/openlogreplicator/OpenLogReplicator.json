@@ -32,10 +32,11 @@
       "memory": {
         "min-mb": 256,
         "max-mb": 4096,
-        "swap-path": "/output/swap"
+        "swap-path": "/olr/swap"
       },
       "state": {
         "type": "disk",
+        "path": "/olr/checkpoint",
         "interval-s": 10,
         "interval-mb": 100
       },

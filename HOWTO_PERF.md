@@ -46,7 +46,7 @@ make report     # Generate report
 ```bash
 docker compose logs -f olr-file          # OLR logs (olr-only)
 docker compose logs -f dbz olr-dbz       # CDC logs (full)
-tail -f ./output/olr/events.json         # CDC events (olr-only)
+docker compose exec olr-file tail -f /olr/output/events.json  # CDC events (olr-only)
 ```
 
 ### Kubernetes

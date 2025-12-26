@@ -14,11 +14,11 @@ services:
   clean:
     image: busybox:1.36
     profiles: ["clean"]
-    command: ["sh", "-c", "rm -rf /output/olr/* /output/hammerdb/* /output/kafka-consumer/*"]
+    command: ["sh", "-c", "rm -rf /olr/* /output/hammerdb/* /output/kafka-consumer/*"]
     volumes:
-      - ./output/olr:/output/olr
-      - ./output/hammerdb:/output/hammerdb
-      - ./output/kafka-consumer:/output/kafka-consumer
+      - olr:/olr
+      - hammerdb-output:/output/hammerdb
+      - kafka-consumer-output:/output/kafka-consumer
 
   # Init container to fix volume permissions
   init:
@@ -30,13 +30,11 @@ services:
           set -xe
           chown -R 54321:54321 /opt/oracle/oradata
           chown -R 1000:1000 /output/hammerdb
-          chown -R 1000:1000 /checkpoint
-          mkdir -p /output/olr/swap && chown -R 1000:1000 /output/olr
+          mkdir -p /olr/checkpoint /olr/swap && chown -R 1000:1000 /olr
     volumes:
       - oracle-oradata:/opt/oracle/oradata
-      - ./output/hammerdb:/output/hammerdb
-      - olr-checkpoint:/checkpoint
-      - ./output/olr:/output/olr
+      - hammerdb-output:/output/hammerdb
+      - olr:/olr
     restart: "no"
 
   oracle:
@@ -129,7 +127,7 @@ services:
       - HAMMERDB_VUS=${HAMMERDB_VUS:-8}
     volumes:
       - ./config/hammerdb:/scripts
-      - ./output/hammerdb:/tmp
+      - hammerdb-output:/tmp
     entrypoint: ["/scripts/entrypoint.sh"]
     command: ["web"]
     networks:
@@ -152,8 +150,7 @@ services:
     volumes:
       - oracle-oradata:/opt/oracle/oradata:ro
       - ./config/openlogreplicator/OpenLogReplicator-file.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
-      - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
-      - ./output/olr:/output
+      - olr:/olr
     networks:
       cdc-network:
         aliases:
@@ -203,7 +200,7 @@ services:
       - KAFKA_TOPIC_PATTERN=oracle.*
     volumes:
       - ./config/kafka-consumer/kafka-consumer.py:/app/kafka-consumer.py:ro
-      - ./output/kafka-consumer:/app/output
+      - kafka-consumer-output:/app/output
     networks:
       - cdc-network
 
@@ -252,8 +249,7 @@ services:
     volumes:
       - oracle-oradata:/opt/oracle/oradata:ro
       - ./config/openlogreplicator/OpenLogReplicator.json:/opt/OpenLogReplicator/scripts/OpenLogReplicator.json:ro
-      - olr-checkpoint:/opt/OpenLogReplicator/checkpoint
-      - olr-output:/output
+      - olr:/olr
     networks:
       cdc-network:
         aliases:
@@ -261,7 +257,8 @@ services:
 
   # Debezium with OpenLogReplicator backend
   dbz:
-    image: rophy/debezium-server:3.3.2-4d8ca7f  # https://github.com/rophy/debezium/commit/4d8ca7f
+    # image: rophy/debezium-server:3.3.2-4d8ca7f  # https://github.com/rophy/debezium/commit/4d8ca7f
+    image: quay.io/debezium/connect:3.3.2.Final
     profiles: ["full"]
     restart: on-failure
     depends_on:
@@ -284,11 +281,12 @@ services:
 volumes:
   oracle-oradata:
   prometheus-data:
-  olr-checkpoint:
+  olr:
+  hammerdb-output:
   # Full profile volumes
   kafka-data:
   debezium-data:
-  olr-output:
+  kafka-consumer-output:
 
 networks:
   cdc-network:

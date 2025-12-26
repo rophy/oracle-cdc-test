@@ -132,8 +132,8 @@ This achieves the same result as the documented `"scn-all": 1`.
 # Insert test row
 docker compose exec oracle sqlplus -S USR1/USR1PWD@//localhost:1521/FREEPDB1 <<< "INSERT INTO ADAM1 VALUES (99, 'Test', 1, SYSTIMESTAMP); COMMIT;"
 
-# Check captured events (olr-only profile - local file)
-tail -1 ./output/olr/events.json | jq
+# Check captured events (olr-only profile)
+docker compose exec olr-file tail -1 /olr/output/events.json | jq
 
 # Check captured events (full profile - via kafka-consumer)
 docker compose exec kafka-consumer tail -1 /app/output/events.json | jq
