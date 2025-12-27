@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Performance Test 2025-12-27 (full)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>K8s Performance Test 2025-12-27 (full)</h1>
+    <p class="meta">
+        Start: 2025-12-27 14:06:59 UTC | End: 2025-12-27 14:14:45 UTC | Duration: 7 min
+    </p>
+
+    
+    
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>oracle CPU</td>
+                    <td style="text-align: right;">2.5%</td>
+                    <td style="text-align: right;">87.0%</td>
+                    <td style="text-align: right;">127%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr CPU</td>
+                    <td style="text-align: right;">0.10%</td>
+                    <td style="text-align: right;">23.0%</td>
+                    <td style="text-align: right;">29.7%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>debezium CPU</td>
+                    <td style="text-align: right;">0.46%</td>
+                    <td style="text-align: right;">89.8%</td>
+                    <td style="text-align: right;">158%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka CPU</td>
+                    <td style="text-align: right;">20.1%</td>
+                    <td style="text-align: right;">50.0%</td>
+                    <td style="text-align: right;">154%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka-consumer CPU</td>
+                    <td style="text-align: right;">1.2%</td>
+                    <td style="text-align: right;">21.0%</td>
+                    <td style="text-align: right;">99.5%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Memory</td>
+                    <td style="text-align: right;">9.7K MB</td>
+                    <td style="text-align: right;">12.2K MB</td>
+                    <td style="text-align: right;">13.3K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Memory</td>
+                    <td style="text-align: right;">39.8 MB</td>
+                    <td style="text-align: right;">335 MB</td>
+                    <td style="text-align: right;">396 MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>debezium Memory</td>
+                    <td style="text-align: right;">348 MB</td>
+                    <td style="text-align: right;">1.0K MB</td>
+                    <td style="text-align: right;">1.2K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka Memory</td>
+                    <td style="text-align: right;">349 MB</td>
+                    <td style="text-align: right;">4.9K MB</td>
+                    <td style="text-align: right;">7.6K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka-consumer Memory</td>
+                    <td style="text-align: right;">2.5 MB</td>
+                    <td style="text-align: right;">96.5 MB</td>
+                    <td style="text-align: right;">772 MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracledb_activity_user_commits</td>
+                    <td style="text-align: right;">913/s</td>
+                    <td style="text-align: right;">1.3K/s</td>
+                    <td style="text-align: right;">1.5K/s</td>
+                    <td style="text-align: right;">~585.8K</td>
+                </tr>
+                
+                <tr>
+                    <td>oracledb_dml_redo_entries</td>
+                    <td style="text-align: right;">1.1/s</td>
+                    <td style="text-align: right;">22.4K/s</td>
+                    <td style="text-align: right;">27.7K/s</td>
+                    <td style="text-align: right;">~10.4M</td>
+                </tr>
+                
+                <tr>
+                    <td>dml_ops{filter="out"}</td>
+                    <td style="text-align: right;">0.10/s</td>
+                    <td style="text-align: right;">11.7K/s</td>
+                    <td style="text-align: right;">14.4K/s</td>
+                    <td style="text-align: right;">~5.4M</td>
+                </tr>
+                
+                <tr>
+                    <td>messages_sent</td>
+                    <td style="text-align: right;">9.8K/s</td>
+                    <td style="text-align: right;">13.5K/s</td>
+                    <td style="text-align: right;">15.7K/s</td>
+                    <td style="text-align: right;">~6.3M</td>
+                </tr>
+                
+                <tr>
+                    <td>debezium_oracle_streaming_total_captured_dml</td>
+                    <td style="text-align: right;">9.0K/s</td>
+                    <td style="text-align: right;">11.2K/s</td>
+                    <td style="text-align: right;">13.0K/s</td>
+                    <td style="text-align: right;">~5.2M</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka_topic_partition_current_offset{topic=~"oracle.*"}</td>
+                    <td style="text-align: right;">9.4K/s</td>
+                    <td style="text-align: right;">11.3K/s</td>
+                    <td style="text-align: right;">12.7K/s</td>
+                    <td style="text-align: right;">~5.3M</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka_consumergroup_current_offset{consumergroup="file-writer"}</td>
+                    <td style="text-align: right;">14.7K/s</td>
+                    <td style="text-align: right;">14.7K/s</td>
+                    <td style="text-align: right;">14.7K/s</td>
+                    <td style="text-align: right;">~6.9M</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    
+    
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <h2>Oracledb Activity User Commits Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart1"></canvas>
+        </div>
+    </div>
+    
+    <h2>Oracledb Dml Redo Entries Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart2"></canvas>
+        </div>
+    </div>
+    
+    <h2>Dml Ops{Filter="Out"} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart3"></canvas>
+        </div>
+    </div>
+    
+    <h2>Messages Sent Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart4"></canvas>
+        </div>
+    </div>
+    
+    <h2>Debezium Oracle Streaming Total Captured Dml Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart5"></canvas>
+        </div>
+    </div>
+    
+    <h2>Kafka Topic Partition Current Offset{Topic=~"Oracle.*"} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart6"></canvas>
+        </div>
+    </div>
+    
+    <h2>Kafka Consumergroup Current Offset{Consumergroup="File-Writer"} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart7"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = ["06:59", "07:29", "07:59", "08:29", "08:59", "09:29", "09:59", "10:29", "10:59", "11:29", "11:59", "12:29", "12:59", "13:29", "13:59", "14:29"];
+
+        
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle CPU %',
+                        data: [2.49, 126.52, 98.19, 75.54, 84.5, 93.27, 87.95, 94.28, 105.41, 58.86, 103.07, 109.19, 72.48, 97.45, 99.15, 83.64],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr CPU %',
+                        data: [0.1, 26.58, 29.73, 14.53, 24.52, 24.85, 18.73, 29.63, 29.27, 26.79, 24.75, 23.86, 24.63, 24.38],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'debezium CPU %',
+                        data: [1.15, 158.16, 123.36, 76.92, 64.4, 99.21, 0.46, 116.0, 113.15, 112.67, 68.22, 118.23, 69.44, 116.34, 97.93, 101.26],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka CPU %',
+                        data: [46.92, 81.63, 68.02, 50.6, 39.43, 45.55, 33.55, 35.46, 45.39, 154.27, 30.13, 24.33, 37.16, 41.49, 45.21, 20.13],
+                        borderColor: colors[3 % colors.length].border,
+                        backgroundColor: colors[3 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka-consumer CPU %',
+                        data: [34.19, 1.75, 1.16, 3.0, 1.77, 1.2, 1.24, 45.29, 99.52],
+                        borderColor: colors[4 % colors.length].border,
+                        backgroundColor: colors[4 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Memory (MB)',
+                        data: [9660.8, 10012.6, 10724.5, 11488.1, 12212.5, 12688.8, 12814.0, 13020.2, 12650.1, 12511.3, 12334.6, 12753.0, 12949.6, 13059.8, 13094.8, 13274.1],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Memory (MB)',
+                        data: [39.8, 298.6, 310.1, 312.2, 319.6, 333.8, 339.3, 377.9, 357.1, 378.1, 365.8, 378.4, 383.2, 379.8, 388.2, 395.5],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'debezium Memory (MB)',
+                        data: [348.4, 590.9, 965.9, 974.2, 985.4, 989.1, 1004.0, 1011.4, 1014.7, 1158.9, 1161.5, 1165.2, 1167.6, 1170.6, 1172.7, 1175.3],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka Memory (MB)',
+                        data: [349.2, 1528.5, 2109.2, 2735.9, 3528.7, 3908.9, 4438.7, 4821.8, 5389.3, 6735.0, 6391.3, 6595.1, 6953.0, 7292.6, 7488.8, 7624.7],
+                        borderColor: colors[3 % colors.length].border,
+                        backgroundColor: colors[3 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka-consumer Memory (MB)',
+                        data: [33.4, 33.4, 33.4, 33.4, 33.4, 32.7, 32.2, 31.9, 210.4, 772.5, 2.5, 2.8, 2.8],
+                        borderColor: colors[4 % colors.length].border,
+                        backgroundColor: colors[4 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+        // Rate Chart 1
+        new Chart(document.getElementById('rateChart1'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'oracledb_activity_user_commits (events/sec)',
+                    data: [0.0, 1319.7, 1388.3, 912.7, 1136.6, 1032.8, 1329.5, 1426.7, 1456.1, 1420.2, 1457.3, 1417.0, 1162.0, 1079.0, 1137.6, 1179.3],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 2
+        new Chart(document.getElementById('rateChart2'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'oracledb_dml_redo_entries (events/sec)',
+                    data: [1.1, 26061.4, 26248.7, 17440.3, 21695.8, 19815.7, 25476.3, 26475.1, 27746.1, 26874.6, 27591.9, 27082.7, 21533.8, 20522.7, 21720.5, 22313.1],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 3
+        new Chart(document.getElementById('rateChart3'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'dml_ops{filter="out"} (events/sec)',
+                    data: [0.1, 12963.9, 14429.9, 9027.1, 11325.3, 10159.4, 12425.9, 14035.5, 14386.0, 13965.9, 14370.4, 13953.5, 12163.5, 10605.5, 11254.2, 11681.4],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 4
+        new Chart(document.getElementById('rateChart4'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'messages_sent (events/sec)',
+                    data: [0.0, 14095.1, 15699.7, 9818.8, 12292.5, 11069.9, 13522.3, 15273.3, 15652.3, 15159.3, 15674.2, 15173.5, 13221.5, 11525.1, 12249.1, 12703.5],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 5
+        new Chart(document.getElementById('rateChart5'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'debezium_oracle_streaming_total_captured_dml (events/sec)',
+                    data: [0.0, 11462.6, 13035.5, 10260.5, 9960.7, 8992.2, 10126.0, 10271.4, 12714.9, 12399.5, 12126.3, 12278.3, 12075.3, 10982.9, 10371.7, 10380.6],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 6
+        new Chart(document.getElementById('rateChart6'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'kafka_topic_partition_current_offset{topic=~"oracle.*"} (events/sec)',
+                    data: [11572.8, 12235.9, 11948.7, 11148.2, 10225.9, 10127.3, 9510.1, 9359.3, 11095.8, 11971.1, 12288.0, 11878.4, 12424.5, 12661.7, 10612.3],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 7
+        new Chart(document.getElementById('rateChart7'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'kafka_consumergroup_current_offset{consumergroup="file-writer"} (events/sec)',
+                    data: [14744.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+    </script>
+</body>
+</html>
