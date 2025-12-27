@@ -158,3 +158,30 @@ docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server loca
 For detailed procedures, see:
 - `HOWTO_HAMMERDB.md` - HammerDB commands, web service, REST API
 - `HOWTO_PERF.md` - Performance testing and metrics reference
+
+## Long-Running Jobs (IMPORTANT for AI Assistants)
+
+Commands like `make build` (~2-3 min) and `make run-bench` (~9 min) are long-running.
+
+**DO NOT** write scripts to automate waiting/monitoring. Such scripts cannot anticipate the variety of errors that may occur and will fail.
+
+**Instead**, run jobs in background and manually monitor:
+```bash
+# Run in background
+make build &
+
+# Repeatedly check logs (do this manually, multiple times)
+docker compose logs --tail=50 oracle hammerdb
+
+# Sleep and check again
+sleep 30
+docker compose logs --tail=50 oracle hammerdb
+```
+
+Watch for errors like:
+- ORA-* errors in Oracle logs
+- Connection failures in HammerDB
+- Checkpoint issues in OLR
+- Kafka connection errors in Debezium
+
+This manual approach allows you to recognize and respond to unexpected issues.
