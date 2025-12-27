@@ -115,6 +115,7 @@ data:
           },
           "state": {
             "type": "disk",
+            "path": "/opt/OpenLogReplicator/checkpoint",
             "interval-s": 10,
             "interval-mb": 100
           },
@@ -133,7 +134,7 @@ data:
           "writer": {
             "type": "network",
             "uri": "0.0.0.0:9000",
-            "queue-size": 10000
+            "queue-size": 200000
           }
         }
       ]
