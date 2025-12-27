@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Performance Test 2025-12-26</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>K8s Performance Test 2025-12-26</h1>
+    <p class="meta">
+        Start: 2025-12-26 14:57:23 UTC | End: 2025-12-26 15:05:35 UTC | Duration: 8 min
+    </p>
+
+    
+    
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>oracle CPU</td>
+                    <td style="text-align: right;">1.7%</td>
+                    <td style="text-align: right;">69.5%</td>
+                    <td style="text-align: right;">108%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr CPU</td>
+                    <td style="text-align: right;">0.04%</td>
+                    <td style="text-align: right;">2.5%</td>
+                    <td style="text-align: right;">15.4%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>debezium CPU</td>
+                    <td style="text-align: right;">0.12%</td>
+                    <td style="text-align: right;">0.62%</td>
+                    <td style="text-align: right;">1.1%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka CPU</td>
+                    <td style="text-align: right;">11.7%</td>
+                    <td style="text-align: right;">24.7%</td>
+                    <td style="text-align: right;">44.5%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka-consumer CPU</td>
+                    <td style="text-align: right;">0.17%</td>
+                    <td style="text-align: right;">3.9%</td>
+                    <td style="text-align: right;">20.9%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Memory</td>
+                    <td style="text-align: right;">9.2K MB</td>
+                    <td style="text-align: right;">14.0K MB</td>
+                    <td style="text-align: right;">17.1K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Memory</td>
+                    <td style="text-align: right;">48.6 MB</td>
+                    <td style="text-align: right;">2.0K MB</td>
+                    <td style="text-align: right;">2.3K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>debezium Memory</td>
+                    <td style="text-align: right;">377 MB</td>
+                    <td style="text-align: right;">501 MB</td>
+                    <td style="text-align: right;">554 MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka Memory</td>
+                    <td style="text-align: right;">342 MB</td>
+                    <td style="text-align: right;">408 MB</td>
+                    <td style="text-align: right;">514 MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>kafka-consumer Memory</td>
+                    <td style="text-align: right;">33.1 MB</td>
+                    <td style="text-align: right;">43.7 MB</td>
+                    <td style="text-align: right;">58.4 MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    
+    
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = ["57:23", "57:53", "58:23", "58:53", "59:23", "59:53", "00:23", "00:53", "01:23", "01:53", "02:23", "02:53", "03:23", "03:53", "04:23", "04:53", "05:23"];
+
+        
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle CPU %',
+                        data: [1.74, 80.36, 108.34, 0.0, 80.12, 58.65, 75.38, 58.9, 88.09, 68.08, 69.97, 50.61, 80.82, 73.58, 84.91, 70.9, 61.38],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr CPU %',
+                        data: [0.09, 14.99, 15.37, 9.09, 0.13, 0.06, 0.05, 0.06, 0.04, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'debezium CPU %',
+                        data: [0.7, 1.08, 0.73, 0.95, 0.7, 0.19, 0.68, 0.61, 0.49, 0.8, 0.64, 0.68, 0.86, 0.12, 0.4, 0.53, 0.38],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka CPU %',
+                        data: [11.67, 36.01, 36.33, 14.9, 30.09, 20.97, 44.53, 30.85, 21.77, 22.74, 21.6, 12.46, 26.4, 24.81, 26.05, 17.39, 20.74],
+                        borderColor: colors[3 % colors.length].border,
+                        backgroundColor: colors[3 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka-consumer CPU %',
+                        data: [2.92, 1.7, 2.7, 4.48, 20.88, 5.95, 11.06, 3.98, 0.22, 0.17, 0.23, 0.22, 3.83, 0.22, 0.22],
+                        borderColor: colors[4 % colors.length].border,
+                        backgroundColor: colors[4 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Memory (MB)',
+                        data: [9172.8, 10013.0, 10735.7, 11003.4, 12377.6, 13179.1, 13965.2, 14120.1, 15005.2, 15311.5, 15450.6, 15823.5, 16096.0, 16158.0, 16465.4, 16753.9, 17073.6],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Memory (MB)',
+                        data: [48.6, 572.2, 1289.1, 1922.6, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2, 2255.2],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'debezium Memory (MB)',
+                        data: [376.9, 464.6, 470.4, 476.0, 481.8, 487.1, 492.9, 498.5, 504.0, 513.8, 516.8, 524.7, 530.5, 535.7, 539.1, 546.9, 554.4],
+                        borderColor: colors[2 % colors.length].border,
+                        backgroundColor: colors[2 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka Memory (MB)',
+                        data: [342.3, 373.8, 374.9, 374.4, 376.8, 377.7, 378.4, 448.7, 379.8, 404.9, 409.8, 417.8, 422.1, 438.4, 446.5, 514.0, 459.5],
+                        borderColor: colors[3 % colors.length].border,
+                        backgroundColor: colors[3 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'kafka-consumer Memory (MB)',
+                        data: [33.1, 33.1, 33.1, 33.1, 33.1, 33.1, 33.1, 33.1, 33.1, 58.4, 57.2, 56.4, 56.0, 55.3, 54.6, 53.8, 53.2],
+                        borderColor: colors[4 % colors.length].border,
+                        backgroundColor: colors[4 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+    </script>
+</body>
+</html>

@@ -28,6 +28,24 @@ spec:
           ports:
             - containerPort: 9161
               name: metrics
+          # Liveness probe: restart if metrics endpoint not responding
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9161
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          # Readiness probe: ready when metrics endpoint responds
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9161
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 2
           resources:
             {{- toYaml .Values.metrics.oracleExporter.resources | nindent 12 }}
           volumeMounts:

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Performance Test 2025-12-26 (olr-only)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 40px; }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>K8s Performance Test 2025-12-26 (olr-only)</h1>
+    <p class="meta">
+        Start: 2025-12-26 16:50:50 UTC | End: 2025-12-26 16:59:00 UTC | Duration: 8 min
+    </p>
+
+    
+    
+    <div class="chart-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align: right;">Min</th>
+                    <th style="text-align: right;">Avg</th>
+                    <th style="text-align: right;">Max</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>oracle CPU</td>
+                    <td style="text-align: right;">0.14%</td>
+                    <td style="text-align: right;">78.1%</td>
+                    <td style="text-align: right;">114%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr CPU</td>
+                    <td style="text-align: right;">0.15%</td>
+                    <td style="text-align: right;">147%</td>
+                    <td style="text-align: right;">169%</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracle Memory</td>
+                    <td style="text-align: right;">8.1K MB</td>
+                    <td style="text-align: right;">10.5K MB</td>
+                    <td style="text-align: right;">13.2K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>olr Memory</td>
+                    <td style="text-align: right;">52.6 MB</td>
+                    <td style="text-align: right;">7.1K MB</td>
+                    <td style="text-align: right;">9.6K MB</td>
+                    <td style="text-align: right;">-</td>
+                </tr>
+                
+                <tr>
+                    <td>oracledb_activity_user_commits</td>
+                    <td style="text-align: right;">788/s</td>
+                    <td style="text-align: right;">1.2K/s</td>
+                    <td style="text-align: right;">1.6K/s</td>
+                    <td style="text-align: right;">~606.3K</td>
+                </tr>
+                
+                <tr>
+                    <td>oracledb_dml_redo_entries</td>
+                    <td style="text-align: right;">3.9/s</td>
+                    <td style="text-align: right;">22.1K/s</td>
+                    <td style="text-align: right;">30.2K/s</td>
+                    <td style="text-align: right;">~10.8M</td>
+                </tr>
+                
+                <tr>
+                    <td>dml_ops{filter="out"}</td>
+                    <td style="text-align: right;">0.10/s</td>
+                    <td style="text-align: right;">6.3K/s</td>
+                    <td style="text-align: right;">6.9K/s</td>
+                    <td style="text-align: right;">~3.1M</td>
+                </tr>
+                
+                <tr>
+                    <td>messages_sent</td>
+                    <td style="text-align: right;">7.0K/s</td>
+                    <td style="text-align: right;">7.3K/s</td>
+                    <td style="text-align: right;">7.5K/s</td>
+                    <td style="text-align: right;">~3.6M</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    
+    
+    <h2>CPU Usage (%)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+    <h2>Memory Usage (MB)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <h2>Oracledb Activity User Commits Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart1"></canvas>
+        </div>
+    </div>
+    
+    <h2>Oracledb Dml Redo Entries Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart2"></canvas>
+        </div>
+    </div>
+    
+    <h2>Dml Ops{Filter="Out"} Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart3"></canvas>
+        </div>
+    </div>
+    
+    <h2>Messages Sent Rate (events/sec)</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="rateChart4"></canvas>
+        </div>
+    </div>
+    
+
+    
+    
+
+    <script>
+        // Color palette for charts
+        const colors = [
+            { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // red
+            { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },   // green
+            { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },  // blue
+            { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // amber
+            { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // purple
+            { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // pink
+        ];
+
+        const timeLabels = ["50:50", "51:20", "51:50", "52:20", "52:50", "53:20", "53:50", "54:20", "54:50", "55:20", "55:50", "56:20", "56:50", "57:20", "57:50", "58:20", "58:50"];
+
+        
+        // CPU Chart
+        new Chart(document.getElementById('cpuChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle CPU %',
+                        data: [2.09, 80.91, 113.06, 82.06, 98.67, 71.89, 114.34, 81.3, 95.16, 52.17, 95.83, 100.11, 88.55, 97.09, 85.07, 0.14, 68.96],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr CPU %',
+                        data: [0.15, 121.98, 162.16, 166.39, 164.12, 167.35, 112.9, 165.26, 167.18, 164.59, 167.41, 166.28, 168.65, 167.78],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CPU %' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+        // Memory Chart
+        new Chart(document.getElementById('memChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    
+                    {
+                        label: 'oracle Memory (MB)',
+                        data: [9810.5, 10116.3, 10976.1, 11771.3, 12609.1, 13152.0, 12121.8, 11943.4, 11380.0, 11097.0, 10468.9, 9738.4, 9281.7, 8893.0, 8598.9, 8284.6, 8145.0],
+                        borderColor: colors[0 % colors.length].border,
+                        backgroundColor: colors[0 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    
+                    {
+                        label: 'olr Memory (MB)',
+                        data: [52.6, 1006.6, 2736.4, 4803.2, 5907.3, 7828.9, 8519.1, 9324.5, 9314.0, 9311.7, 9423.8, 9583.4, 9439.5, 9162.3, 9014.0, 8942.1],
+                        borderColor: colors[1 % colors.length].border,
+                        backgroundColor: colors[1 % colors.length].bg,
+                        fill: true,
+                        tension: 0.3
+                    }
+                    
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Memory (MB)' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+        // Rate Chart 1
+        new Chart(document.getElementById('rateChart1'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'oracledb_activity_user_commits (events/sec)',
+                    data: [0.0, 1403.0, 1433.7, 1524.4, 1474.7, 788.5, 1119.5, 941.2, 1331.0, 1002.1, 892.4, 1393.7, 1334.2, 1622.3, 1093.9, 1086.9, 1356.3],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 2
+        new Chart(document.getElementById('rateChart2'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'oracledb_dml_redo_entries (events/sec)',
+                    data: [3.9, 29577.9, 26929.7, 28734.5, 27490.4, 15102.7, 21179.7, 17845.3, 24688.4, 18551.0, 17080.5, 26116.0, 24785.3, 30152.7, 20573.8, 20763.8, 25298.4],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 3
+        new Chart(document.getElementById('rateChart3'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'dml_ops{filter="out"} (events/sec)',
+                    data: [0.1, 6500.8, 6670.7, 6561.4, 6902.5, 6760.3, 6572.3, 6652.7, 6589.0, 6662.9, 6732.8, 6724.1, 6799.9, 6815.9, 6892.3, 6743.7],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+        // Rate Chart 4
+        new Chart(document.getElementById('rateChart4'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'messages_sent (events/sec)',
+                    data: [0.0, 7043.7, 7240.1, 7134.9, 7517.0, 7357.7, 7163.5, 7266.7, 7186.1, 7201.9, 7338.5, 7302.3, 7399.5, 7421.7, 7497.8, 7319.9],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Events/sec' }
+                    },
+                    x: { title: { display: true, text: 'Time (mm:ss)' } }
+                }
+            }
+        });
+        
+
+        
+    </script>
+</body>
+</html>
