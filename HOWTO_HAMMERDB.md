@@ -26,6 +26,15 @@ docker compose exec hammerdb /scripts/entrypoint.sh cmd "puts [jobs]"
 docker compose exec hammerdb /scripts/entrypoint.sh web
 ```
 
+> **Note**: `build` takes ~2-3 minutes and `run` takes ~9 minutes (2 min rampup + 5 min test). These are long-running jobs - consider running in background and monitoring logs:
+> ```bash
+> # Run in background
+> docker compose exec -d hammerdb /scripts/entrypoint.sh build
+>
+> # Monitor progress
+> docker compose logs -f hammerdb
+> ```
+
 ## Web Service
 
 The HammerDB web service runs on port 8080 inside the container. It provides:

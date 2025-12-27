@@ -8,10 +8,12 @@ export PROFILE=full        # or olr-only
 
 make clean      # Remove previous run
 make up         # Start stack
-make build      # Build TPCC schema and configure CDC
-make run-bench  # Run benchmark
+make build      # Build TPCC schema and configure CDC (~2-3 min)
+make run-bench  # Run benchmark (~9 min: 2 rampup + 5 test + teardown)
 make report     # Generate report
 ```
+
+> **Note**: `make build` and `make run-bench` are long-running jobs. Run them in one terminal while monitoring logs in another to catch any issues early.
 
 ## Environment Variables
 
@@ -39,22 +41,42 @@ make report     # Generate report
 | `make run-bench` | Run HammerDB workload, record timestamps |
 | `make report` | Generate HTML report from Prometheus metrics |
 
-## Monitoring
+## Monitoring During Build/Benchmark
+
+Since `make build` and `make run-bench` are long-running, open a separate terminal to monitor for issues:
 
 ### Docker
 
 ```bash
-docker compose logs -f olr-file          # OLR logs (olr-only)
-docker compose logs -f dbz olr-dbz       # CDC logs (full)
-docker compose exec olr-file tail -f /olr/output/events.json  # CDC events (olr-only)
+# During make build - watch Oracle and HammerDB
+docker compose logs -f oracle hammerdb
+
+# During make run-bench (full profile) - watch CDC pipeline
+docker compose logs -f dbz olr-dbz kafka
+
+# Watch CDC events being captured
+docker compose exec kafka-consumer tail -f /app/output/events.json
 ```
 
 ### Kubernetes
 
 ```bash
+# During make build
+kubectl logs -n oracle-cdc deployment/oracle -f
+kubectl logs -n oracle-cdc job/hammerdb-build -f
+
+# During make run-bench
 kubectl logs -n oracle-cdc deployment/oracle-cdc-olr -f
 kubectl logs -n oracle-cdc deployment/oracle-cdc-debezium -c debezium -f
 ```
+
+### What to Watch For
+
+- **Oracle**: ORA-* errors, tablespace issues
+- **HammerDB**: Connection failures, schema build errors
+- **OLR**: Checkpoint issues, redo log gaps
+- **Debezium**: Kafka connection errors, schema registry issues
+- **Kafka**: Broker errors, topic creation failures
 
 ---
 
