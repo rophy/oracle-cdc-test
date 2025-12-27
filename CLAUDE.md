@@ -14,7 +14,7 @@
 | OpenLogReplicator | `rophy/openlogreplicator:1.8.7` | CDC via direct redo log parsing |
 | Kafka | `apache/kafka:3.9.0` | Message broker for CDC events |
 | kafka-consumer | `python:3.11-slim` | Consumes Kafka events, writes to file |
-| HammerDB | `tpcorg/hammerdb:v4.10` | TPROC-C benchmark |
+| HammerDB | `rophy/hammerdb:v4.10-20251227-r1` | TPROC-C benchmark |
 
 **Note on Oracle image**: We use gvenzl instead of Oracle's official lite image because the lite image has broken `DBMS_METADATA` package (see `KNOWN_ISSUES.md`). The gvenzl slim-faststart variant properly handles XDB dependencies.
 
