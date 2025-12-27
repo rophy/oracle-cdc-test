@@ -10,13 +10,13 @@ echo "Cleaning up namespace: $NAMESPACE"
 # Uninstall helm release
 helm uninstall "$RELEASE_NAME" -n "$NAMESPACE" 2>/dev/null || echo "Release not found"
 
-# Wait for pods to terminate
+# Wait for pods to actually terminate
 echo "Waiting for pods to terminate..."
-sleep 5
+kubectl wait --for=delete pod --all -n "$NAMESPACE" --timeout=120s 2>/dev/null || true
 
-# Delete PVCs
+# Delete PVCs (must wait for pods to be gone first, as bound PVCs are protected)
 echo "Deleting PVCs..."
-kubectl delete pvc --all -n "$NAMESPACE" --force --grace-period=0 2>/dev/null || true
+kubectl delete pvc --all -n "$NAMESPACE" --wait=true 2>/dev/null || true
 
 # Clean local output files
 echo "Cleaning local output files..."
