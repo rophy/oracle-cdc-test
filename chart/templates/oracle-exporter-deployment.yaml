@@ -28,11 +28,13 @@ spec:
           ports:
             - containerPort: 9161
               name: metrics
-          # Liveness probe: restart if metrics endpoint not responding
+          # Liveness probe: restart if oracledb_up metric is not 1 (same as Docker healthcheck)
           livenessProbe:
-            httpGet:
-              path: /metrics
-              port: 9161
+            exec:
+              command:
+                - sh
+                - -c
+                - 'curl -sf http://localhost:9161/metrics | grep -q ''oracledb_up{database="default"} 1'''
             initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
